@@ -1,0 +1,152 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap');
+
+@layer base {
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 199 89% 35%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 215 25% 93%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 215 20% 95%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 172 66% 40%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 199 89% 35%;
+
+    --radius: 0.625rem;
+
+    /* Status colors */
+    --status-new: 210 100% 50%;
+    --status-contacted: 38 92% 50%;
+    --status-responded: 280 65% 55%;
+    --status-qualified: 142 71% 45%;
+    --status-quoted: 262 83% 58%;
+    --status-closed: 160 84% 39%;
+
+    /* Custom semantic tokens */
+    --surface-elevated: 0 0% 100%;
+    --surface-sunken: 215 25% 96%;
+    --text-primary: 222 47% 11%;
+    --text-secondary: 215 16% 47%;
+    --text-tertiary: 215 14% 64%;
+    --border-subtle: 214 32% 94%;
+    --border-strong: 214 32% 85%;
+
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 210 40% 96%;
+    --sidebar-primary: 199 89% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 30% 18%;
+    --sidebar-accent-foreground: 210 40% 96%;
+    --sidebar-border: 222 30% 20%;
+    --sidebar-ring: 199 89% 48%;
+  }
+
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 210 40% 96%;
+
+    --card: 222 47% 9%;
+    --card-foreground: 210 40% 96%;
+
+    --popover: 222 47% 9%;
+    --popover-foreground: 210 40% 96%;
+
+    --primary: 199 89% 48%;
+    --primary-foreground: 222 47% 11%;
+
+    --secondary: 222 30% 15%;
+    --secondary-foreground: 210 40% 96%;
+
+    --muted: 222 30% 15%;
+    --muted-foreground: 215 20% 60%;
+
+    --accent: 172 66% 45%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 210 40% 96%;
+
+    --border: 222 30% 18%;
+    --input: 222 30% 18%;
+    --ring: 199 89% 48%;
+
+    --surface-elevated: 222 47% 11%;
+    --surface-sunken: 222 47% 5%;
+    --text-primary: 210 40% 96%;
+    --text-secondary: 215 20% 65%;
+    --text-tertiary: 215 14% 45%;
+    --border-subtle: 222 30% 15%;
+    --border-strong: 222 30% 25%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Outfit', sans-serif;
+  }
+
+  /* Safe area support for mobile */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+}
+
+@layer utilities {
+  .status-new {
+    @apply bg-[hsl(var(--status-new)/0.12)] text-[hsl(var(--status-new))] border-[hsl(var(--status-new)/0.25)];
+  }
+  .status-contacted {
+    @apply bg-[hsl(var(--status-contacted)/0.12)] text-[hsl(var(--status-contacted))] border-[hsl(var(--status-contacted)/0.25)];
+  }
+  .status-responded {
+    @apply bg-[hsl(var(--status-responded)/0.12)] text-[hsl(var(--status-responded))] border-[hsl(var(--status-responded)/0.25)];
+  }
+  .status-qualified {
+    @apply bg-[hsl(var(--status-qualified)/0.12)] text-[hsl(var(--status-qualified))] border-[hsl(var(--status-qualified)/0.25)];
+  }
+  .status-quoted {
+    @apply bg-[hsl(var(--status-quoted)/0.12)] text-[hsl(var(--status-quoted))] border-[hsl(var(--status-quoted)/0.25)];
+  }
+  .status-closed {
+    @apply bg-[hsl(var(--status-closed)/0.12)] text-[hsl(var(--status-closed))] border-[hsl(var(--status-closed)/0.25)];
+  }
+
+  /* Touch-friendly tap targets */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+}

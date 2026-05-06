@@ -1,0 +1,57 @@
+# Project Memory
+
+## Core
+- **Brand**: Automate Planet. Las Vegas AI Communications Co for SMBs. Support-first (AI as backup, not replacement).
+- **Sender**: Alex Perez <alex@automateplanet.com> (702) 863-3200. Calendly: https://calendly.com/automateplanet/15
+- **Tech**: Supabase (RLS on, verify_jwt=false), Deno 0.224.0. OpenAI only (no Lovable AI Gateway). Perplexity (Sonar) for discovery enrichment.
+- **AI Config**: OpenAI chat completions use `max_tokens`. OMIT `temperature` entirely.
+- **Email limits**: Max 2 req/min on Resend. Enforce 35s delay in processing loops.
+- **Auth**: 8-digit OTP only. Magic links disabled.
+- **Constraints**: Strict DNC enforcement. Fix only "error" severity on security scans.
+- **Cost guards**: Discovery capped at 5 runs/day (override with `force:true`). Drip interval ≥15 min. Cron exhaust pruned hourly.
+
+## Memories
+- [Multi-City Rotation](mem://features/outreach-agent/multi-city-rotation) — Rotates through 100 US cities every 30 mins
+- [Auto Status Progression](mem://features/prospect-management/auto-status-progression) — Updates prospect to contacted on email activity
+- [Drip Sending System](mem://features/outreach-agent/drip-sending-system) — 15 min default drip, 30 min cron job
+- [Sync Scheduled Status](mem://features/prospect-management/sync-scheduled-status) — Moves to contacted when scheduled for drip
+- [Responded Status](mem://features/prospect-management/responded-status) — Prospect status moves to responded upon reply
+- [Expanded Discovery](mem://features/outreach-agent/expanded-business-discovery) — Target high-call-volume industries
+- [Discovery Configuration Logic](mem://features/outreach-agent/discovery-configuration-logic) — Parameters pulled directly from database
+- [Automated Follow-up Sequence](mem://features/outreach-agent/automated-follow-up-sequence) — 6-step AI automated sequence based on behavior
+- [Painpoint Follow-Up Framework](mem://features/email-tools/painpoint-followup-framework) — 10-angle library mapped per step + backfill function
+- [Interaction Alerts](mem://features/notifications/interaction-alerts) — Real-time alerts on replies and clicks
+- [Real-time Updates](mem://features/outreach-queue/real-time-updates) — Supabase realtime for queue and agent runs
+- [Automated Reply Handling](mem://features/prospect-management/automated-reply-handling) — Intent classification for DNC vs Hot Leads
+- [Auto-Drip Flow](mem://features/outreach-agent/auto-drip-flow) — Automated scheduling into drip queue
+- [DNC Enforcement](mem://features/prospect-management/do-not-contact-enforcement) — Skips prospects where do_not_contact or unsubscribed is true
+- [Resend Stats Sync](mem://features/email-tools/resend-stats-sync) — Manual sync for historical engagement stats
+- [Email Metric Definitions](mem://features/analytics/email-metric-definitions) — Formulas for Delivery, Open, CTR, CTOR
+- [Email Generator Logic](mem://features/email-tools/email-generator-logic) — Friendly referral framework for generators
+- [AI Cold Call Scripts](mem://features/crm/ai-cold-call-scripts) — Scripts based on prospect data and hiring signals
+- [Campaign 500 Free](mem://features/marketing/campaign-500-free) — Outreach highlighting risk-free calls
+- [Post Call Follow-up](mem://features/email-tools/post-call-follow-up) — Post-conversation follow-up templates
+- [Calendly Booking Link](mem://features/email-tools/calendly-booking-link) — All emails include Calendly link for self-booking demos
+- [Towing Vertical Template](mem://features/email-tools/towing-vertical-template) — Towing email type promising 2x bookings, links to towingapp.automateplanet.com
+- [AI Prioritization](mem://outreach-strategy/ai-prioritization-for-discovery) — Bypasses static templates
+- [Product Terminology](mem://outreach-strategy/product-terminology) — Las Vegas based AI Communications Company, 72 languages
+- [Lead Discovery Targets](mem://outreach-strategy/lead-discovery-targets) — SaaS companies and Government agencies
+- [Email Discovery Priority](mem://outreach-strategy/email-discovery-priority) — Decision-maker emails over generic mailboxes
+- [Email Discovery Strategy](mem://outreach-strategy/email-discovery-strategy) — Advanced searches via LinkedIn, Crunchbase, SEC
+- [Dynamic Context Tailoring](mem://outreach-strategy/dynamic-context-tailoring) — Messaging maps based on 6 business categories and 7 roles
+- [Email Discovery Fallback](mem://outreach-strategy/email-discovery-fallback) — Industry-specific fallback domains when search fails
+- [Hiring Intent Discovery](mem://outreach-strategy/hiring-intent-discovery) — Targeting businesses actively hiring for phone roles
+- [Intent-Based Discovery](mem://outreach-strategy/intent-based-discovery) — fitScore >= 5 requirement
+- [Messaging and Positioning](mem://outreach-strategy/messaging-and-positioning) — Support-First, prevent missed calls
+- [AI Tooling](mem://technical-decisions/ai-tooling) — OpenAI only + Perplexity (Sonar) for discovery enrichment
+- [Resend Webhooks](mem://technical-decisions/resend-webhook-integration) — Handles email.delivered, opened, clicked, etc.
+- [Security Architecture](mem://technical-decisions/security-architecture) — RLS, edge function auth, Svix signatures for Resend
+- [Email Generation Consistency](mem://technical-decisions/email-generation-consistency) — Strict adherence to referral framework
+- [Webhook Diagnostics](mem://technical-decisions/webhook-diagnostics) — Unmatched event logging
+- [Discovery Engine Workflow](mem://technical-decisions/discovery-engine-workflow) — 3-phase: Google Places, Perplexity, OpenAI; capped at 5 runs/day
+- [Edge Function Runtime](mem://technical-decisions/edge-function-runtime) — Deno std 0.224.0
+- [Data Fetching Scalability](mem://technical-decisions/data-fetching-scalability) — Paginated retrieval in edge functions and useProspects
+- [Email Rate Limits](mem://constraints/email-delivery-rate-limits) — 35-second delay to respect 2 req/min Resend limit
+- [Security Fix Priority](mem://constraints/security-fix-priority) — Fix only 'error' severity issues from scans
+- [Auth Email Branding](mem://style/auth-email-branding) — Outfit font, primary teal, 8-digit OTP style
+- [Access Control](mem://auth/access-control-and-otp) — Passwordless 8-digit OTP

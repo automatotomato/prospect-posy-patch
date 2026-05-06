@@ -1,0 +1,1 @@
+UPDATE prospects SET email = NULL WHERE email ~* '@(mhtml\.blink|sentry|wixpress|cloudflare)' OR email ~* '^frame-' OR email ~* '[a-f0-9]{16,}@';
