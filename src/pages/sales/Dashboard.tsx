@@ -388,8 +388,8 @@ export default function SalesDashboard() {
 
 /* ============ Pieces ============ */
 
-function SidebarLink({ icon, label, active, badge, onClick }: {
-  icon: React.ReactNode; label: string; active?: boolean; badge?: number; onClick?: () => void;
+function SidebarLink({ icon, label, active, badge, onClick, className }: {
+  icon: React.ReactNode; label: string; active?: boolean; badge?: number; onClick?: () => void; className?: string;
 }) {
   return (
     <button
@@ -398,7 +398,7 @@ function SidebarLink({ icon, label, active, badge, onClick }: {
         active
           ? "bg-primary/10 text-primary border border-primary/20"
           : "text-muted-foreground hover:text-foreground hover:bg-muted/40 border border-transparent"
-      }`}
+      } ${className || ""}`}
     >
       {icon}
       <span className="flex-1 text-left">{label}</span>
