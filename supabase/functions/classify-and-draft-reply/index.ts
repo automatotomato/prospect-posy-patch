@@ -69,7 +69,7 @@ serve(async (req) => {
           type: 'function',
           function: {
             name: 'classify_and_draft',
-            description: 'Classify reply intent and draft Alex\'s response.',
+            description: 'Classify reply intent and draft a Z & C Consultants response.',
             parameters: {
               type: 'object',
               properties: {
