@@ -18,6 +18,7 @@ import {
   LayoutDashboard, Kanban, Settings as SettingsIcon, Bell, Building2, MapPin,
 } from "lucide-react";
 import { useSalesLeads, STAGES, type Lead } from "@/hooks/useSalesLeads";
+import { FollowUpSequencePanel } from "@/components/sales/FollowUpSequencePanel";
 
 const VERTICALS = [
   "manufacturing", "warehouse", "logistics company", "transportation company",
