@@ -1,63 +1,67 @@
-# Reduce Cloud + AI Balance Burn
+## Goal
 
-Five changes to stop the project from chewing through credits.
+A clean, separate dashboard at `/sales` for outbound sales: log in, discover new business leads in target verticals, and generate a short personalized outreach email for each one. No email is actually sent — drafts only, copy-to-clipboard.
 
-## 1. Slow down cron schedules
+## 1. Auth — password login for management@z-cconsultants.com
 
-Reschedule the two recurring jobs in `cron.job`:
-- `process-scheduled-emails`: `*/15 * * * *` → `*/30 * * * *` (every 30 min instead of 15). Most runs do nothing — logs confirm "No pending emails to process".
-- `recalculate-lead-scores-every-15min`: `0 * * * *` → `0 6 * * *` (once daily at 6 AM UTC). Lead scores don't need hourly refresh on a 1,764-row table.
+- Enable email+password sign-in on the backend (the existing 8-digit OTP flow stays for other users).
+- Create a new `/sales/login` page with email + password fields (separate from the existing OTP login so we don't disturb the current CRM users).
+- Seed the user:
+  - Add `management@z-cconsultants.com` to `allowed_users` as `admin` so the existing `handle_new_user` trigger provisions their role and team membership automatically.
+  - Create the auth user with a password via a one-time admin migration/insert. You'll be prompted to enter the password securely — it is never stored in code or chat.
+- After login, redirect to `/sales`.
 
-## 2. Slow drip interval
+## 2. Sales dashboard `/sales`
 
-Update `agent_settings.drip_settings`:
-- `interval_minutes`: 2 → 15
-- Keep `enabled: true`, `max_per_hour: 47`
+Single-page layout:
 
-## 3. Aggressive cron exhaust cleanup
-
-Currently `cron._http_response` (85 MB) and `cron.job_run_details` (65 MB) account for ~75% of the database. Cleanup runs only daily.
-
-Add a new hourly cron job `cleanup-cron-exhaust-hourly` (`0 * * * *`):
-```sql
-DELETE FROM cron.job_run_details WHERE start_time < now() - interval '1 day';
-DELETE FROM net._http_response   WHERE created    < now() - interval '6 hours';
+```text
+┌──────────────────────────────────────────────────┐
+│  Outbound Sales                    [user] [out] │
+├──────────────────────────────────────────────────┤
+│  [Discover new leads]   vertical: [dropdown]    │
+│  city: [input]   count: [10 ▼]                  │
+├──────────────────────────────────────────────────┤
+│  Leads (table)                                   │
+│   Name · Industry · City · Email · Status · ▸   │
+│   ─────────────────────────────────────────────  │
+│   row → expands to show generated email draft    │
+│         [Regenerate] [Copy email] [Mark sent]    │
+└──────────────────────────────────────────────────┘
 ```
 
-Run an immediate one-time cleanup as part of this work to reclaim ~150 MB.
+- **Discover**: calls a new edge function `sales-discover-leads` that uses Google Places + Perplexity to find businesses in the chosen vertical/city and stores them in a new `sales_leads` table. Default verticals: manufacturing, warehousing, logistics, transportation, inventory management, distribution, 3PL, freight, wholesale, field services — anything spreadsheet-heavy. **Hard exclusion list**: healthcare, hospitals, clinics, dental, medical, pharma, health insurance, any insurance (life/auto/home/P&C).
+- **Generate email**: edge function `sales-generate-email` uses Lovable AI Gateway to draft a short (≤90 words) personalized outreach email focused on building a connection, not pitching. Tone: warm, curious, references something specific about the business. Ends with a light question, no hard CTA. No sending — just stores the draft on the lead row.
+- **Mark sent**: manual status toggle (since email isn't wired).
 
-## 4. Cap discovery runs per day
+## 3. Data
 
-Add a hard cap inside `supabase/functions/discover-businesses/index.ts`, just before the `agent_runs` insert:
+New table `sales_leads` (separate from the existing `prospects` table so the two systems don't collide):
 
-- Count today's `agent_runs` rows (UTC day).
-- If count ≥ 5, return HTTP 429 with `{ error, capped: true, runs_today }` and skip the entire Google Places + Perplexity + OpenAI chain.
-- Allow override via `body.force === true` for manual admin triggers.
+- business_name, website, email, phone, city, state, industry, source
+- notes (what the discovery agent learned)
+- email_subject, email_body, email_generated_at
+- status: `new` | `drafted` | `sent` | `skipped`
+- owner_id (auth user)
+- created_at, updated_at
 
-This caps the worst-case AI cost at 5 discovery runs/day no matter how many times the agent or UI fires it.
+RLS: only the owner (or admin) can read/write their own leads.
 
-## 5. Audit Lovable AI usage
+## 4. Exclusions / safety
 
-Audit confirms zero remaining `ai.gateway.lovable.dev` calls in `supabase/functions/` and `src/`. The two functions converted earlier (`ingest-email`, `classify-and-draft-reply`) now use OpenAI. The remaining `LOVABLE_API_KEY` references are for the Twilio connector gateway (`send-sms`) and Auth email webhook signing (`auth-email-hook`) — neither hits the AI balance.
+- Discovery prompt and a post-filter both reject any lead whose industry/name matches the healthcare or insurance blocklist.
+- Existing DNC table is respected if an email matches.
 
-Update `mem://index.md` Core to remove the stale "Lovable AI Gateway" line and reflect OpenAI as the sole AI provider.
+## 5. Out of scope (per your request)
 
-## Technical Details
+- Actually sending email (no Resend wiring on this dashboard).
+- Touching the existing Automate Planet CRM, queues, drip system, or analytics.
+- The earlier secret/connector linking tasks — those remain pending and can be done separately when you're ready.
 
-**Cron changes** — applied via `cron.unschedule` + `cron.schedule` using the existing service-role auth headers already stored in the jobs.
+## Technical notes
 
-**Settings update** — single SQL `UPDATE agent_settings SET setting_value = '{...}'::jsonb WHERE setting_key = 'drip_settings'`.
-
-**Discovery cap** — runs before any external API call so capped invocations cost effectively nothing.
-
-**Files modified**
-- `supabase/functions/discover-businesses/index.ts` (add cap)
-- `mem://index.md` (memory note)
-- DB: `cron.job` (3 schedule changes), `agent_settings` (1 row update), one-shot prune of `cron._http_response` + `cron.job_run_details`
-
-## Expected impact
-
-- Cron invocations: ~150/day → ~75/day (50% drop in serverless invocations)
-- DB size: ~197 MB → ~50 MB after prune
-- Drip throughput: 30/hr → 4/hr (still hits the 47/hr cap when needed)
-- Discovery AI cost: bounded to 5 runs/day max
+- Routes: `/sales/login`, `/sales` (protected).
+- New files: `src/pages/sales/Login.tsx`, `src/pages/sales/Dashboard.tsx`, `src/hooks/useSalesLeads.ts`, edge functions `sales-discover-leads`, `sales-generate-email`.
+- Reuses existing `GOOGLE_PLACES_API_KEY`, `LOVABLE_API_KEY`. No new secrets required for this step.
+- Password auth enabled via `configure_auth`; OTP flow untouched.
+- You'll be asked to enter the initial password through Lovable's secure secret input so it never appears in chat or code.
