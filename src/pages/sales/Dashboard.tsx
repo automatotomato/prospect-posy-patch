@@ -329,6 +329,9 @@ export default function SalesDashboard() {
             <TabsContent value="followups" className="mt-4">
               <FollowUpSequencePanel leads={leads} activities={activities} onOpenLead={setOpenLead} />
             </TabsContent>
+            <TabsContent value="how-it-works" className="mt-4">
+              <HowItWorksPanel />
+            </TabsContent>
             <TabsContent value="queue" className="mt-4">
               <LeadTable leads={queuedLeads} loading={loading} emptyText="Nothing queued. Move leads to Queue from the pipeline." onOpen={setOpenLead} showColumn="queued" />
             </TabsContent>
