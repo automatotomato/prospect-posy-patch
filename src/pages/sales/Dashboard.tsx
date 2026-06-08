@@ -180,7 +180,7 @@ export default function SalesDashboard() {
           <SidebarLink icon={<Users className="w-4 h-4" />} label="Leads" onClick={() => setTab("all")} />
           <SidebarLink icon={<ActivityIcon className="w-4 h-4" />} label="Activity" onClick={() => setTab("activity")} />
           <SidebarLink icon={<Clock className="w-4 h-4" />} label="Follow-ups" badge={dueFollowUps.length || undefined} onClick={() => setTab("followups")} />
-          <SidebarLink icon={<HelpCircle className="w-4 h-4" />} label="How It Works" onClick={() => setTab("how-it-works")} />
+          <SidebarLink icon={<HelpCircle className="w-4 h-4" />} label="How It Works" active={tab === "how-it-works"} onClick={() => setTab("how-it-works")} className="ml-5 w-[calc(100%-1.25rem)]" />
         </nav>
 
         <div className="p-3 border-t border-border space-y-1">
