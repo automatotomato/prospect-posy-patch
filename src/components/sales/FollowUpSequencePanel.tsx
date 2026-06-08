@@ -182,7 +182,7 @@ export function FollowUpSequencePanel({
       delayDays: 7 * nextStep,
       angle: "New angle",
       subject: "New follow-up subject",
-      body: "Hi {{first_name}},\n\n— Alex",
+      body: "Hi {{first_name}},\n\n— Z & C Consultants",
     };
     setSequence([...sequence, t]);
     setEditing(t);
