@@ -663,21 +663,65 @@ export type Database = {
           },
         ]
       }
+      sales_activities: {
+        Row: {
+          created_at: string
+          id: string
+          lead_id: string
+          metadata: Json | null
+          note: string | null
+          owner_id: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lead_id: string
+          metadata?: Json | null
+          note?: string | null
+          owner_id: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lead_id?: string
+          metadata?: Json | null
+          note?: string | null
+          owner_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_activities_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "sales_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sales_leads: {
         Row: {
           business_name: string
           city: string | null
+          contact_count: number
           created_at: string
           email: string | null
           email_body: string | null
           email_generated_at: string | null
           email_subject: string | null
+          follow_up_at: string | null
           id: string
           industry: string | null
+          last_activity_at: string | null
+          last_contacted_at: string | null
           notes: string | null
           owner_id: string
           phone: string | null
+          queued_at: string | null
           source: string | null
+          stage: string
           state: string | null
           status: string
           updated_at: string
@@ -686,17 +730,23 @@ export type Database = {
         Insert: {
           business_name: string
           city?: string | null
+          contact_count?: number
           created_at?: string
           email?: string | null
           email_body?: string | null
           email_generated_at?: string | null
           email_subject?: string | null
+          follow_up_at?: string | null
           id?: string
           industry?: string | null
+          last_activity_at?: string | null
+          last_contacted_at?: string | null
           notes?: string | null
           owner_id: string
           phone?: string | null
+          queued_at?: string | null
           source?: string | null
+          stage?: string
           state?: string | null
           status?: string
           updated_at?: string
@@ -705,17 +755,23 @@ export type Database = {
         Update: {
           business_name?: string
           city?: string | null
+          contact_count?: number
           created_at?: string
           email?: string | null
           email_body?: string | null
           email_generated_at?: string | null
           email_subject?: string | null
+          follow_up_at?: string | null
           id?: string
           industry?: string | null
+          last_activity_at?: string | null
+          last_contacted_at?: string | null
           notes?: string | null
           owner_id?: string
           phone?: string | null
+          queued_at?: string | null
           source?: string | null
+          stage?: string
           state?: string | null
           status?: string
           updated_at?: string
