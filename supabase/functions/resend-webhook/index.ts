@@ -256,7 +256,7 @@ serve(async (req) => {
             const resend = new Resend(resendApiKey);
             try {
               await resend.emails.send({
-                from: "Z Notifications <alex@automateplanet.com> C Notifications <management@z-cconsultants.com>",
+                from: "Z & C Notifications <management@z-cconsultants.com>",
                 to: ["management@z-cconsultants.com"],
                 subject: `🔥 Hot Lead — ${businessName} clicked your email`,
                 html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;"><h2 style="color:#f59e0b;">Hot Lead — Email Clicked!</h2><p><strong>${businessName}</strong> just clicked a link in your email:</p><div style="background:#f4f4f5;padding:16px;border-radius:8px;margin:16px 0;"><p style="margin:0;"><strong>Subject:</strong> ${sentEmail.subject}</p><p style="margin:8px 0 0;"><strong>Link clicked:</strong> ${event.data.click?.link || "Unknown"}</p></div><p>Strike while the iron is hot — reach out now!</p><a href="https://field-to-followup.lovable.app/outreach/sent" style="display:inline-block;background:#f59e0b;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;margin-top:16px;">View in Dashboard</a></div>`,
@@ -338,7 +338,7 @@ serve(async (req) => {
             const resend = new Resend(resendApiKey);
             try {
               await resend.emails.send({
-                from: "Z Notifications <alex@automateplanet.com> C Notifications <management@z-cconsultants.com>",
+                from: "Z & C Notifications <management@z-cconsultants.com>",
                 to: ["management@z-cconsultants.com"],
                 subject: `🔥 Hot Lead — ${businessName} is interested!`,
                 html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;"><h2 style="color:#22c55e;">🔥 Hot Lead — Interested!</h2><p><strong>${businessName}</strong> replied to your email and seems interested:</p><div style="background:#f4f4f5;padding:16px;border-radius:8px;margin:16px 0;"><p style="margin:0;"><strong>Subject:</strong> ${sentEmail.subject}</p><p style="margin:8px 0 0;"><strong>Their reply:</strong></p><p style="margin:8px 0 0;white-space:pre-wrap;">${replyText.substring(0, 500)}</p></div><p>Follow up personally — they're warm!</p><a href="https://field-to-followup.lovable.app/outreach/sent" style="display:inline-block;background:#22c55e;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;margin-top:16px;">View in Dashboard</a></div>`,
@@ -362,7 +362,7 @@ serve(async (req) => {
             const resend = new Resend(resendApiKey);
             try {
               await resend.emails.send({
-                from: "Z Notifications <alex@automateplanet.com> C Notifications <management@z-cconsultants.com>",
+                from: "Z & C Notifications <management@z-cconsultants.com>",
                 to: ["management@z-cconsultants.com"],
                 subject: `🔔 Reply from ${businessName}`,
                 html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;"><h2 style="color:#22c55e;">New Reply Received!</h2><p><strong>${businessName}</strong> replied to your email:</p><div style="background:#f4f4f5;padding:16px;border-radius:8px;margin:16px 0;"><p style="margin:0;"><strong>Original Subject:</strong> ${sentEmail.subject}</p><p style="margin:8px 0 0;"><strong>From:</strong> ${sentEmail.to_email}</p></div><p>Check your inbox to continue the conversation!</p><a href="https://field-to-followup.lovable.app/outreach/sent" style="display:inline-block;background:#22c55e;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;margin-top:16px;">View in Dashboard</a></div>`,
