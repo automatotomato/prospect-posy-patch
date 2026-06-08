@@ -60,21 +60,13 @@ export function AppHeader({ pendingCount = 0 }: AppHeaderProps) {
       </div>
 
       <nav className="hidden md:flex items-center gap-1 mr-2">
-        <Button asChild variant={location.pathname === '/today' || location.pathname === '/' ? 'secondary' : 'ghost'} size="sm" className="gap-1.5">
-          <Link to="/today"><Sun className="w-4 h-4" />Today</Link>
-        </Button>
-        <Button asChild variant={location.pathname === '/pipeline' ? 'secondary' : 'ghost'} size="sm" className="gap-1.5">
-          <Link to="/pipeline"><LayoutDashboard className="w-4 h-4" />Pipeline</Link>
+        <Button asChild variant={location.pathname.startsWith('/sales') ? 'secondary' : 'ghost'} size="sm" className="gap-1.5">
+          <Link to="/sales"><LayoutDashboard className="w-4 h-4" />Dashboard</Link>
         </Button>
         {isAdmin && (
-          <>
-            <Button asChild variant={location.pathname === '/sms-templates' ? 'secondary' : 'ghost'} size="sm" className="gap-1.5">
-              <Link to="/sms-templates"><MessageSquare className="w-4 h-4" />SMS</Link>
-            </Button>
-            <Button asChild variant={location.pathname === '/team' ? 'secondary' : 'ghost'} size="sm" className="gap-1.5">
-              <Link to="/team"><Users className="w-4 h-4" />Team</Link>
-            </Button>
-          </>
+          <Button asChild variant={location.pathname === '/team' ? 'secondary' : 'ghost'} size="sm" className="gap-1.5">
+            <Link to="/team"><Users className="w-4 h-4" />Team</Link>
+          </Button>
         )}
       </nav>
 
