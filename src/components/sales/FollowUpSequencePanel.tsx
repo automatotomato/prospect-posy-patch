@@ -132,9 +132,9 @@ function saveSequence(seq: Touchpoint[]) {
 
 function renderVars(text: string, lead?: Lead) {
   return text
-    .replaceAll("{{first_name}}", (lead?.business_name || "there").split(" ")[0] || "there")
-    .replaceAll("{{company}}", lead?.business_name || "your business")
-    .replaceAll("{{city}}", lead?.city || "your city");
+    .replace(/\{\{first_name\}\}/g, (lead?.business_name || "there").split(" ")[0] || "there")
+    .replace(/\{\{company\}\}/g, lead?.business_name || "your business")
+    .replace(/\{\{city\}\}/g, lead?.city || "your city");
 }
 
 export function FollowUpSequencePanel({
