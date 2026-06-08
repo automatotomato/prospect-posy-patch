@@ -1,8 +1,9 @@
 // Shared helper: verify the sender domain is verified in Resend before sending.
 // Caches result in-memory for 5 minutes to avoid hammering Resend's /domains endpoint.
+import { BRAND } from "./brand.ts";
 
-export const SENDER_EMAIL = "marketing@automateplanet.com";
-export const SENDER_DOMAIN = "automateplanet.com";
+export const SENDER_EMAIL = BRAND.senderEmail;
+export const SENDER_DOMAIN = BRAND.senderDomain;
 
 export interface SenderDomainStatus {
   ok: boolean;            // true only when the domain is verified and ready to send

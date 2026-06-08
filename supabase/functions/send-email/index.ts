@@ -125,11 +125,11 @@ const handler = async (req: Request): Promise<Response> => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: from || "Alex Perez <marketing@automateplanet.com>",
+        from: from || "Z & C Consultants <management@z-cconsultants.com>",
         to: [to],
         subject: subject,
         html: htmlBody,
-        reply_to: replyTo || "alex@automateplanet.com",
+        reply_to: replyTo || "management@z-cconsultants.com",
       }),
     });
 

@@ -540,7 +540,7 @@ export default function OutreachSettings() {
         <CardHeader>
           <CardTitle>Sender Domain</CardTitle>
           <CardDescription>
-            Outbound emails are sent from <strong>marketing@automateplanet.com</strong>. The domain must be verified in Resend before any send works.
+            Outbound emails are sent from <strong>management@z-cconsultants.com</strong>. The domain <code>z-cconsultants.com</code> must be added in Resend and DNS-verified (SPF/DKIM/DMARC) before any send works.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
