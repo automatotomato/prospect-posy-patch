@@ -388,10 +388,10 @@ export function FollowUpSequencePanel({
                 </div>
                 <div className="p-5 space-y-3 bg-background">
                   <div className="flex items-center gap-2 pb-3 border-b border-border">
-                    <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">AP</div>
+                    <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">ZC</div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium">Alex Perez</div>
-                      <div className="text-[11px] text-muted-foreground">alex@automateplanet.com → {previewLead?.email || "lead@example.com"}</div>
+                      <div className="text-sm font-medium">Z &amp; C Consultants</div>
+                      <div className="text-[11px] text-muted-foreground">management@z-cconsultants.com → {previewLead?.email || "lead@example.com"}</div>
                     </div>
                   </div>
                   <div>
