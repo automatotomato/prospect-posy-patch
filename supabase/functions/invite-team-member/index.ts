@@ -81,14 +81,14 @@ Deno.serve(async (req) => {
     // Send branded invite email via Resend (if configured)
     let emailSent = false;
     if (RESEND_API_KEY) {
-      const appUrl = "https://salesai.automateplanet.com";
+      const appUrl = "https://z-cconsultants.com";
       const html = `
         <div style="font-family: 'Outfit', Arial, sans-serif; background:#fff; padding:32px 28px; max-width:560px; margin:0 auto; color:#0f172a;">
-          <p style="font-size:16px; font-weight:bold; color:hsl(199,89%,35%); margin:0 0 20px;">⚡ Automate Planet</p>
+          <p style="font-size:16px; font-weight:bold; color:hsl(199,89%,35%); margin:0 0 20px;">Z & C Consultants</p>
           <h1 style="font-size:22px; margin:0 0 16px;">You've been invited to the Sales CRM</h1>
           <p style="font-size:14px; line-height:1.6; color:#475569; margin:0 0 24px;">
             ${name}, you've been added as a <strong>${role === "admin" ? "Admin" : "Sales Rep"}</strong>
-            on the Automate Planet sales platform. Click below to sign in — you'll receive a one-time code by email.
+            on the Z & C Consultants sales platform. Click below to sign in — you'll receive a one-time code by email.
           </p>
           <a href="${appUrl}/auth?email=${encodeURIComponent(email)}"
              style="display:inline-block; background:hsl(199,89%,35%); color:#fff; font-weight:600; font-size:14px;
@@ -107,9 +107,9 @@ Deno.serve(async (req) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: "Automate Planet <notify@notify.salesai.automateplanet.com>",
+            from: "Z & C Consultants <management@z-cconsultants.com>",
             to: [email],
-            subject: "You've been invited to Automate Planet Sales",
+            subject: "You've been invited to Z & C Consultants Sales",
             html,
           }),
         });

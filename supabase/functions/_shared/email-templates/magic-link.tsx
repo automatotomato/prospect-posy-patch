@@ -25,10 +25,10 @@ export const MagicLinkEmail = ({
 }: MagicLinkEmailProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>Your login code for Automate Planet</Preview>
+    <Preview>Your login code for Z & C Consultants</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Text style={brand}>⚡ Automate Planet</Text>
+        <Text style={brand}>Z & C Consultants</Text>
         <Heading style={h1}>Your login code</Heading>
         <Text style={text}>
           Use the code below to sign in. This code will expire shortly.

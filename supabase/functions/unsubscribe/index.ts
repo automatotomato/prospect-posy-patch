@@ -72,7 +72,7 @@ serve(async (req) => {
     return new Response(
       generateHtmlPage(
         "Unsubscribed",
-        `You have been successfully unsubscribed from Automate Planet emails. You will no longer receive marketing communications from us.`,
+        `You have been successfully unsubscribed from Z & C Consultants emails. You will no longer receive marketing communications from us.`,
         true
       ),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "text/html" } }
@@ -99,7 +99,7 @@ function generateHtmlPage(title: string, message: string, success: boolean): str
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title} - Automate Planet</title>
+  <title>${title} - Z & C Consultants</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -147,8 +147,8 @@ function generateHtmlPage(title: string, message: string, success: boolean): str
     <h1>${title}</h1>
     <p>${message}</p>
     <div class="logo">
-      <strong>Automate Planet</strong><br>
-      (702) 863-3200
+      <strong>Z & C Consultants</strong><br>
+      +1 (214) 997-4331
     </div>
   </div>
 </body>

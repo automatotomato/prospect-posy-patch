@@ -24,10 +24,10 @@ export const RecoveryEmail = ({
 }: RecoveryEmailProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>Reset your password for Automate Planet</Preview>
+    <Preview>Reset your password for Z & C Consultants</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Text style={brand}>⚡ Automate Planet</Text>
+        <Text style={brand}>Z & C Consultants</Text>
         <Heading style={h1}>Reset your password</Heading>
         <Text style={text}>
           We received a request to reset your password. Click below to choose a new one.

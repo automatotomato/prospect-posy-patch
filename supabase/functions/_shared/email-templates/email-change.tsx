@@ -29,10 +29,10 @@ export const EmailChangeEmail = ({
 }: EmailChangeEmailProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>Confirm your email change for Automate Planet</Preview>
+    <Preview>Confirm your email change for Z & C Consultants</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Text style={brand}>⚡ Automate Planet</Text>
+        <Text style={brand}>Z & C Consultants</Text>
         <Heading style={h1}>Confirm your email change</Heading>
         <Text style={text}>
           You requested to change your email from{' '}
