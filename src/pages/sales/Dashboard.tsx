@@ -180,6 +180,7 @@ export default function SalesDashboard() {
           <SidebarLink icon={<Users className="w-4 h-4" />} label="Leads" onClick={() => setTab("all")} />
           <SidebarLink icon={<ActivityIcon className="w-4 h-4" />} label="Activity" onClick={() => setTab("activity")} />
           <SidebarLink icon={<Clock className="w-4 h-4" />} label="Follow-ups" badge={dueFollowUps.length || undefined} onClick={() => setTab("followups")} />
+          <SidebarLink icon={<HelpCircle className="w-4 h-4" />} label="How It Works" onClick={() => setTab("how-it-works")} />
         </nav>
 
         <div className="p-3 border-t border-border space-y-1">
@@ -286,6 +287,7 @@ export default function SalesDashboard() {
               <TabsList className="bg-transparent h-auto p-0 gap-6 rounded-none">
                 <PillTab value="pipeline" current={tab}>Pipeline</PillTab>
                 <PillTab value="followups" current={tab} count={dueFollowUps.length} accent>Follow-ups</PillTab>
+                <PillTab value="how-it-works" current={tab}>How It Works</PillTab>
                 <PillTab value="queue" current={tab} count={queuedLeads.length}>Queue</PillTab>
                 <PillTab value="all" current={tab} count={leads.length}>All Leads</PillTab>
                 <PillTab value="activity" current={tab}>Activity</PillTab>
