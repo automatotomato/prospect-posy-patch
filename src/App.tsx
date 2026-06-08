@@ -12,6 +12,8 @@ import Today from "./pages/Today";
 import NotFound from "./pages/NotFound";
 import SmsTemplates from "./pages/SmsTemplates";
 import Team from "./pages/Team";
+import SalesLogin from "./pages/sales/Login";
+import SalesDashboard from "./pages/sales/Dashboard";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +31,8 @@ const App = () => (
             <Route path="/today" element={<ProtectedRoute><Today /></ProtectedRoute>} />
             <Route path="/sms-templates" element={<AdminRoute><SmsTemplates /></AdminRoute>} />
             <Route path="/team" element={<AdminRoute><Team /></AdminRoute>} />
+            <Route path="/sales/login" element={<SalesLogin />} />
+            <Route path="/sales" element={<ProtectedRoute><SalesDashboard /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
