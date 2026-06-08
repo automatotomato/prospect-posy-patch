@@ -224,73 +224,224 @@ export default function Settings() {
           </TabsContent>
 
           {/* MESSAGING */}
-          <TabsContent value="messaging" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <h2 className="font-display text-base font-semibold">Email templates</h2>
-                <p className="text-xs text-muted-foreground">Edit subject lines and message wording used in outreach</p>
+          <TabsContent value="messaging" className="space-y-8">
+            {/* Live outreach sequence — the actual messages we send */}
+            <div className="space-y-4">
+              <div className="flex items-start justify-between gap-4 flex-wrap">
+                <div>
+                  <h2 className="font-display text-base font-semibold flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-primary" />Outreach sequence
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    These are the exact messages sent to every new lead. Edit any step to fine-tune subject, timing, and wording.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline" size="sm"
+                    onClick={() => {
+                      if (!confirm("Reset all messages to the Z & C defaults?")) return;
+                      setSequence(DEFAULT_SEQUENCE);
+                      toast({ title: "Sequence reset to defaults" });
+                    }}
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 mr-1.5" />Reset
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      const nextStep = sequence.length + 1;
+                      const t: Touchpoint = {
+                        id: `step-${Date.now()}`,
+                        step: nextStep,
+                        channel: "email",
+                        delayDays: 4 * nextStep,
+                        angle: "New angle",
+                        subject: "New follow-up subject",
+                        body: "Hi {{first_name}},\n\n— Z & C Consultants",
+                      };
+                      setSequence([...sequence, t]);
+                      setEditingStep(t);
+                    }}
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1.5" />Add step
+                  </Button>
+                </div>
               </div>
-              {isAdmin && (
-                <Button onClick={() => setEditing({ id: "", name: "", subject: "", body: "", category: "outreach", is_default: false })}>
-                  <Plus className="w-4 h-4 mr-2" />New template
-                </Button>
-              )}
+
+              <div className="space-y-3">
+                {sequence.map((t, i) => (
+                  <Card key={t.id} className="p-5 hover:border-primary/30 transition-colors">
+                    <div className="flex items-start gap-4">
+                      <div className="flex flex-col items-center gap-1 shrink-0">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 text-primary font-display font-bold flex items-center justify-center">
+                          {t.step}
+                        </div>
+                        {i < sequence.length - 1 && <div className="w-px h-6 bg-border" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="font-display font-semibold text-sm">{t.subject}</h4>
+                          <Badge variant="outline" className="text-[10px] gap-1">
+                            <Mail className="w-3 h-3" />{t.channel}
+                          </Badge>
+                          <Badge variant="secondary" className="text-[10px] gap-1">
+                            <Clock className="w-3 h-3" />
+                            {t.delayDays === 0 ? "Day 0" : `+${t.delayDays}d`}
+                          </Badge>
+                          <Badge className="text-[10px] bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20">
+                            {t.angle}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2 line-clamp-3 whitespace-pre-wrap">
+                          {t.body}
+                        </p>
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        <Button size="sm" variant="ghost" onClick={() => setPreviewStepId(t.id)} title="Preview">
+                          <Eye className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setEditingStep(t)}>Edit</Button>
+                        <Button
+                          size="sm" variant="ghost"
+                          onClick={() => {
+                            if (!confirm(`Remove step ${t.step}?`)) return;
+                            setSequence(sequence.filter(s => s.id !== t.id).map((s, idx) => ({ ...s, step: idx + 1 })));
+                            toast({ title: "Step removed" });
+                          }}
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Edit dialog */}
+              <Dialog open={!!editingStep} onOpenChange={(o) => !o && setEditingStep(null)}>
+                {editingStep && (
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Step {editingStep.step} — fine-tune message</DialogTitle>
+                    </DialogHeader>
+                    <TouchpointEditor
+                      t={editingStep}
+                      onChange={(t) => {
+                        setEditingStep(t);
+                        setSequence((prev) => prev.map((s) => (s.id === t.id ? t : s)));
+                      }}
+                      onSave={() => {
+                        toast({ title: `Step ${editingStep.step} saved` });
+                        setEditingStep(null);
+                      }}
+                    />
+                  </DialogContent>
+                )}
+              </Dialog>
+
+              {/* Preview dialog */}
+              <Dialog open={!!previewStepId} onOpenChange={(o) => !o && setPreviewStepId(null)}>
+                {previewStepId && (() => {
+                  const t = sequence.find((s) => s.id === previewStepId);
+                  if (!t) return null;
+                  const sample = { business_name: "Acme Logistics", city: "Dallas" };
+                  return (
+                    <DialogContent className="max-w-2xl">
+                      <DialogHeader>
+                        <DialogTitle>Preview · Step {t.step} — {t.angle}</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 pb-3 border-b border-border">
+                          <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">ZC</div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium">Z &amp; C Consultants</div>
+                            <div className="text-[11px] text-muted-foreground">management@z-cconsultants.com → lead@acme-logistics.com</div>
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Subject</div>
+                          <div className="text-base font-semibold mt-1">{renderVars(t.subject, sample)}</div>
+                        </div>
+                        <pre className="text-sm whitespace-pre-wrap font-sans leading-relaxed text-foreground/90">
+                          {renderVars(t.body, sample)}
+                        </pre>
+                      </div>
+                    </DialogContent>
+                  );
+                })()}
+              </Dialog>
             </div>
 
-            {editing && (
-              <Card className="p-6 space-y-4 border-primary/30">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-display font-semibold">{editing.id ? "Edit template" : "New template"}</h3>
-                  <Button variant="ghost" size="sm" onClick={() => setEditing(null)}><X className="w-4 h-4" /></Button>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Name</Label>
-                    <Input value={editing.name} onChange={e => setEditing({ ...editing, name: e.target.value })} placeholder="Cold intro v1" />
-                  </div>
-                  <div>
-                    <Label>Category</Label>
-                    <Input value={editing.category || ""} onChange={e => setEditing({ ...editing, category: e.target.value })} placeholder="outreach / follow-up" />
-                  </div>
-                </div>
+            {/* Saved templates library (separate from active sequence) */}
+            <div className="space-y-4 border-t border-border pt-8">
+              <div className="flex justify-between items-center">
                 <div>
-                  <Label>Subject</Label>
-                  <Input value={editing.subject} onChange={e => setEditing({ ...editing, subject: e.target.value })} placeholder="Quick idea for {{company}}" />
+                  <h2 className="font-display text-base font-semibold">Saved template library</h2>
+                  <p className="text-xs text-muted-foreground">Optional snippets you can reuse when drafting one-off emails.</p>
                 </div>
-                <div>
-                  <Label>Body</Label>
-                  <Textarea rows={10} value={editing.body} onChange={e => setEditing({ ...editing, body: e.target.value })} placeholder="Hi {{first_name}}, ..." />
-                  <p className="text-[11px] text-muted-foreground mt-1">Variables: <code>{"{{first_name}}"}</code>, <code>{"{{company}}"}</code>, <code>{"{{city}}"}</code></p>
-                </div>
-                <div className="flex justify-end">
-                  <Button onClick={saveTemplate}><Save className="w-4 h-4 mr-2" />Save template</Button>
-                </div>
-              </Card>
-            )}
+                {isAdmin && (
+                  <Button variant="outline" size="sm" onClick={() => setEditing({ id: "", name: "", subject: "", body: "", category: "outreach", is_default: false })}>
+                    <Plus className="w-4 h-4 mr-2" />New template
+                  </Button>
+                )}
+              </div>
 
-            <div className="space-y-3">
-              {templates.length === 0 && (
-                <Card className="p-8 text-center text-sm text-muted-foreground">No templates yet. {isAdmin && "Click \"New template\" to create one."}</Card>
-              )}
-              {templates.map(t => (
-                <Card key={t.id} className="p-5 flex items-start justify-between gap-4 hover:border-primary/30 transition-colors">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-display font-semibold">{t.name}</h3>
-                      {t.category && <Badge variant="outline" className="text-[10px]">{t.category}</Badge>}
-                      {t.is_default && <Badge className="text-[10px]">Default</Badge>}
-                    </div>
-                    <p className="text-sm font-medium mt-1">{t.subject}</p>
-                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2 whitespace-pre-wrap">{t.body}</p>
+              {editing && (
+                <Card className="p-6 space-y-4 border-primary/30">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-display font-semibold">{editing.id ? "Edit template" : "New template"}</h3>
+                    <Button variant="ghost" size="sm" onClick={() => setEditing(null)}><X className="w-4 h-4" /></Button>
                   </div>
-                  {isAdmin && (
-                    <div className="flex gap-2 shrink-0">
-                      <Button variant="outline" size="sm" onClick={() => setEditing(t)}>Edit</Button>
-                      <Button variant="ghost" size="sm" onClick={() => deleteTemplate(t.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Name</Label>
+                      <Input value={editing.name} onChange={e => setEditing({ ...editing, name: e.target.value })} placeholder="Cold intro v1" />
                     </div>
-                  )}
+                    <div>
+                      <Label>Category</Label>
+                      <Input value={editing.category || ""} onChange={e => setEditing({ ...editing, category: e.target.value })} placeholder="outreach / follow-up" />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Subject</Label>
+                    <Input value={editing.subject} onChange={e => setEditing({ ...editing, subject: e.target.value })} placeholder="Quick idea for {{company}}" />
+                  </div>
+                  <div>
+                    <Label>Body</Label>
+                    <Textarea rows={10} value={editing.body} onChange={e => setEditing({ ...editing, body: e.target.value })} placeholder="Hi {{first_name}}, ..." />
+                    <p className="text-[11px] text-muted-foreground mt-1">Variables: <code>{"{{first_name}}"}</code>, <code>{"{{company}}"}</code>, <code>{"{{city}}"}</code></p>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button onClick={saveTemplate}><Save className="w-4 h-4 mr-2" />Save template</Button>
+                  </div>
                 </Card>
-              ))}
+              )}
+
+              <div className="space-y-3">
+                {templates.length === 0 && (
+                  <Card className="p-6 text-center text-xs text-muted-foreground">No saved templates yet.</Card>
+                )}
+                {templates.map(t => (
+                  <Card key={t.id} className="p-5 flex items-start justify-between gap-4 hover:border-primary/30 transition-colors">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-display font-semibold">{t.name}</h3>
+                        {t.category && <Badge variant="outline" className="text-[10px]">{t.category}</Badge>}
+                        {t.is_default && <Badge className="text-[10px]">Default</Badge>}
+                      </div>
+                      <p className="text-sm font-medium mt-1">{t.subject}</p>
+                      <p className="text-sm text-muted-foreground mt-1 line-clamp-2 whitespace-pre-wrap">{t.body}</p>
+                    </div>
+                    {isAdmin && (
+                      <div className="flex gap-2 shrink-0">
+                        <Button variant="outline" size="sm" onClick={() => setEditing(t)}>Edit</Button>
+                        <Button variant="ghost" size="sm" onClick={() => deleteTemplate(t.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                      </div>
+                    )}
+                  </Card>
+                ))}
+              </div>
             </div>
           </TabsContent>
 
