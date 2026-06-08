@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import {
   LogOut, Sparkles, Copy, Check, RefreshCw, Search, Trash2,
   ListChecks, Clock, Users, Send, MoreVertical, ChevronRight, Activity as ActivityIcon, TrendingUp,
-  LayoutDashboard, Kanban, Settings as SettingsIcon, Bell, Building2, MapPin,
+  LayoutDashboard, Kanban, Settings as SettingsIcon, Bell, Building2, MapPin, HelpCircle,
 } from "lucide-react";
 import { useSalesLeads, STAGES, type Lead } from "@/hooks/useSalesLeads";
 import { FollowUpSequencePanel } from "@/components/sales/FollowUpSequencePanel";
