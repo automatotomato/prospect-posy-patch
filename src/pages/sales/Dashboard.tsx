@@ -182,7 +182,7 @@ export default function SalesDashboard() {
         </nav>
 
         <div className="p-3 border-t border-border space-y-1">
-          <SidebarLink icon={<SettingsIcon className="w-4 h-4" />} label="Settings" onClick={() => navigate("/team")} />
+          <SidebarLink icon={<SettingsIcon className="w-4 h-4" />} label="Settings" onClick={() => navigate("/sales/settings")} />
           <button
             onClick={() => { signOut(); navigate("/sales/login"); }}
             className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
