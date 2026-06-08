@@ -54,8 +54,8 @@ export function AppHeader({ pendingCount = 0 }: AppHeaderProps) {
           <Zap className="w-4 h-4 text-primary-foreground" />
         </div>
         <div className="hidden sm:block">
-          <h1 className="font-display font-semibold text-lg leading-tight">Automate Planet</h1>
-          <p className="text-xs text-muted-foreground">AI Employees for Growing Businesses</p>
+          <h1 className="font-display font-semibold text-lg leading-tight">Z &amp; C Consultants</h1>
+          <p className="text-xs text-muted-foreground">Business Intelligence &amp; Process Automation</p>
         </div>
       </div>
 

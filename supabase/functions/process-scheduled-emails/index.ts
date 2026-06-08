@@ -86,11 +86,11 @@ serve(async (req) => {
 
         // Send via Resend
         const { data: resendData, error: resendError } = await resend.emails.send({
-          from: 'Alex Perez <marketing@automateplanet.com>',
+          from: 'Z & C Consultants <management@z-cconsultants.com>',
           to: [email.to_email],
           subject: email.subject,
           html: htmlBody,
-          reply_to: 'alex@automateplanet.com',
+          reply_to: 'management@z-cconsultants.com',
         });
 
         if (resendError) {

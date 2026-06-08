@@ -362,11 +362,11 @@ Write an email that feels like it was written ONLY for ${prospect.contactName ||
             method: "POST",
             headers: { "Authorization": `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
             body: JSON.stringify({
-              from: "Alex Perez <marketing@automateplanet.com>",
+              from: "Z & C Consultants <management@z-cconsultants.com>",
               to: [prospect.email],
               subject: emailData.subject,
               html: htmlBody,
-              reply_to: "alex@automateplanet.com",
+              reply_to: "management@z-cconsultants.com",
             }),
           });
 

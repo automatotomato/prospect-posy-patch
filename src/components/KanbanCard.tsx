@@ -69,7 +69,7 @@ export function KanbanCard({ prospect, teamMembers, onClick, onScheduleFollowUp,
   const handleEmail = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (prospect.email) {
-      window.open(`mailto:${prospect.email}?subject=AI Employees for ${prospect.businessName}&bcc=alex@automateplanet.com`, '_blank');
+      window.open(`mailto:${prospect.email}?subject=Quick question for ${prospect.businessName}&bcc=management@z-cconsultants.com`, '_blank');
       toast({
         title: "Opening email client",
         description: `Composing email to ${prospect.email}`,
