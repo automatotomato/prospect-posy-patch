@@ -29,88 +29,90 @@ const STORAGE_KEY = "sales.followup.sequence.v1";
 
 const DEFAULT_SEQUENCE: Touchpoint[] = [
   {
-    id: "step-1", step: 1, channel: "email", delayDays: 0, angle: "Intro / value",
-    subject: "Quick idea for {{company}}",
+    id: "step-1", step: 1, channel: "email", delayDays: 0, angle: "Intro / spreadsheet pain",
+    subject: "Cleaner reporting for {{company}}",
     body:
 `Hi {{first_name}},
 
-Saw {{company}} is running operations out of {{city}} — wanted to share something we've been doing with similar shops.
+I run Z & C Consultants — we build Power BI dashboards and process automation for operations-heavy shops in {{city}} (manufacturing, warehouse, logistics, 3PL).
 
-We deploy an AI receptionist that answers every call in under 2 rings (24/7, 72 languages) so quotes don't go to voicemail. Most clients recover $40-$200 per missed call.
+Most owners I talk to are still pulling weekly numbers out of spreadsheets, NetSuite exports, or QuickBooks copy-pastes. We replace that with one live dashboard pulling from your existing systems — no new software for your team to learn.
 
-Worth a 15-min look? https://calendly.com/automateplanet/15
+Open to a quick call to see if it'd fit {{company}}?
 
-— Alex Perez
-Automate Planet | (702) 863-3200`,
+— Z & C Consultants
+(214) 997-4331 | management@z-cconsultants.com`,
   },
   {
-    id: "step-2", step: 2, channel: "email", delayDays: 3, angle: "After-hours angle",
-    subject: "Re: Quick idea for {{company}}",
+    id: "step-2", step: 2, channel: "email", delayDays: 4, angle: "Manual reporting cost",
+    subject: "Re: Cleaner reporting for {{company}}",
     body:
-`Hey {{first_name}} — quick follow-up.
+`Hey {{first_name}},
 
-60-70% of inbound calls hit small businesses outside 9-5. If {{company}} is anything like the rest of {{city}}, that's a lot of jobs walking next door.
+Quick follow-up. Operations teams in {{city}} usually burn 8-15 hours/week stitching reports together by hand. That's $30-60k/yr in admin time before anyone even looks at the numbers.
 
-Our AI picks up nights, weekends, and lunch hours, then texts you the lead within 30 seconds.
+We build the data pipeline + Power BI layer so the report builds itself, every morning, automatically.
 
-Want me to send a 90-sec demo recording?
+Worth 15 minutes to compare to what you're doing today?
 
-— Alex`,
+— Z & C Consultants`,
   },
   {
-    id: "step-3", step: 3, channel: "email", delayDays: 7, angle: "Cost of VAs",
-    subject: "$1.5k VAs that still miss calls",
-    body:
-`{{first_name}},
-
-Most owners I talk to in {{city}} are paying $1,500-$3,000/mo on a VA or answering service — and still losing calls when the VA is on break or on another line.
-
-Our setup is one flat fee, never on break, never sleeping. Captures every call, books on your calendar, dispatches to the on-call crew.
-
-Open to comparing numbers side-by-side?
-
-— Alex`,
-  },
-  {
-    id: "step-4", step: 4, channel: "email", delayDays: 14, angle: "Crew on job / win story",
-    subject: "How a {{city}} shop booked 2x more jobs",
+    id: "step-3", step: 3, channel: "email", delayDays: 8, angle: "Inventory / throughput visibility",
+    subject: "Live inventory + throughput in one view",
     body:
 `{{first_name}},
 
-Quick story: one of our {{city}} clients had their crew tied up on a job, missed 11 inbound calls in 4 hours. After we plugged in the AI, they recovered 9 of those calls the same week — booked 4.
+For warehouses and distribution shops in {{city}}, the biggest win is usually a single screen showing real-time inventory, throughput per shift, and slow-moving SKUs — pulled straight from your WMS or ERP.
 
-Want to see how it handled the conversations? I can share the transcripts.
+We've built this for clients running NetSuite, SAP, Fishbowl, Cin7, and plain SQL backends. Setup is 2-3 weeks, no replatform required.
 
-— Alex
-(702) 863-3200`,
+Want me to send a short walkthrough video?
+
+— Z & C Consultants`,
   },
   {
-    id: "step-5", step: 5, channel: "email", delayDays: 21, angle: "Risk-free trial",
-    subject: "500 free calls on us",
+    id: "step-4", step: 4, channel: "email", delayDays: 12, angle: "Automation / freed-up hours",
+    subject: "How we freed up 22 hrs/week for a {{city}} 3PL",
     body:
 `{{first_name}},
 
-We're running a no-risk pilot: 500 calls handled on us, no contract.
+Quick story: a 3PL we work with had two people running daily fulfillment, billing, and KPI reports out of Excel. We automated the data pulls, billing reconciliation, and the morning report.
 
-If you don't book at least 3 new jobs from those calls, you walk. Most shops in {{city}} clear that in the first 5 days.
+Result: 22 hours/week back, plus billing errors dropped to near-zero.
 
-Grab a 15-min slot here if you want in: https://calendly.com/automateplanet/15
+Happy to walk you through what they did — same approach would map to {{company}}.
 
-— Alex`,
+— Z & C Consultants
+(214) 997-4331`,
   },
   {
-    id: "step-6", step: 6, channel: "email", delayDays: 30, angle: "Breakup",
+    id: "step-5", step: 5, channel: "email", delayDays: 16, angle: "Scoped pilot offer",
+    subject: "Scoped pilot — one dashboard, fixed price",
+    body:
+`{{first_name}},
+
+If you want to test how this would work for {{company}} without a big commitment, we offer a scoped pilot: one Power BI dashboard wired into your real data, fixed price, 2-week turnaround.
+
+If you don't see value at the end, you keep the dashboard and we part ways.
+
+Open to a 15-min scoping call?
+
+— Z & C Consultants`,
+  },
+  {
+    id: "step-6", step: 6, channel: "email", delayDays: 20, angle: "Breakup",
     subject: "Should I close your file?",
     body:
 `{{first_name}},
 
-Haven't heard back so I'll stop reaching out. If this isn't the right time, no hard feelings.
+Haven't heard back so I'll stop reaching out. No hard feelings if the timing's off.
 
-If anything changes and you want to stop losing calls, my cell is (702) 863-3200.
+If you ever want to replace a fragile spreadsheet with something that runs itself, my direct line is (214) 997-4331.
 
 Wishing {{company}} a strong quarter.
 
-— Alex`,
+— Z & C Consultants`,
   },
 ];
 
