@@ -331,7 +331,8 @@ export default function SalesDashboard() {
             </div>
 
             <TabsContent value="pipeline" className="mt-4">
-              <div className="flex gap-4 overflow-x-auto scrollbar-thin pb-4 -mx-2 px-2">
+              {/* Desktop: horizontal kanban */}
+              <div className="hidden md:flex gap-4 overflow-x-auto scrollbar-thin pb-4 -mx-2 px-2">
                 {STAGES.map((s) => {
                   const items = leads.filter((l) => l.stage === s.id);
                   const meta = STAGE_META[s.id];
@@ -356,6 +357,47 @@ export default function SalesDashboard() {
                           </div>
                         )}
                       </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Mobile: stacked collapsible stages */}
+              <div className="md:hidden space-y-2">
+                {STAGES.map((s) => {
+                  const items = leads.filter((l) => l.stage === s.id);
+                  const meta = STAGE_META[s.id];
+                  const isOpen = mobilePipelineStage === s.id;
+                  return (
+                    <div key={s.id} className="bg-card border border-border rounded-xl overflow-hidden">
+                      <button
+                        onClick={() => setMobilePipelineStage(isOpen ? null : s.id)}
+                        className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <span className={`stage-dot ${meta?.dot}`} />
+                          <span className="text-xs font-bold uppercase tracking-wider">{s.label}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-mono font-semibold bg-muted text-muted-foreground px-2 py-0.5 rounded">
+                            {items.length.toString().padStart(2, "0")}
+                          </span>
+                          <ChevronRight className={`w-4 h-4 text-muted-foreground transition-transform ${isOpen ? "rotate-90" : ""}`} />
+                        </div>
+                      </button>
+                      {isOpen && (
+                        <div className="p-3 pt-0 space-y-2 border-t border-border">
+                          {items.length === 0 ? (
+                            <div className="h-16 flex items-center justify-center text-[11px] text-muted-foreground">
+                              No leads in this stage
+                            </div>
+                          ) : (
+                            items.map((l) => (
+                              <KanbanLeadCard key={l.id} lead={l} onClick={() => setOpenLead(l)} />
+                            ))
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
