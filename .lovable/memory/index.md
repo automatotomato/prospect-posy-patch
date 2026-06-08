@@ -1,14 +1,16 @@
 # Project Memory
 
 ## Core
-- **Brand**: Automate Planet. Las Vegas AI Communications Co for SMBs. Support-first (AI as backup, not replacement).
-- **Sender**: Alex Perez <alex@automateplanet.com> (702) 863-3200. Calendly: https://calendly.com/automateplanet/15
-- **Tech**: Supabase (RLS on, verify_jwt=false), Deno 0.224.0. OpenAI only (no Lovable AI Gateway). Perplexity (Sonar) for discovery enrichment.
-- **AI Config**: OpenAI chat completions use `max_tokens`. OMIT `temperature` entirely.
-- **Email limits**: Max 2 req/min on Resend. Enforce 35s delay in processing loops.
-- **Auth**: 8-digit OTP only. Magic links disabled.
-- **Constraints**: Strict DNC enforcement. Fix only "error" severity on security scans.
-- **Cost guards**: Discovery capped at 5 runs/day (override with `force:true`). Drip interval ≥15 min. Cron exhaust pruned hourly.
+- **Brand**: Z & C Consultants — BI, data analytics, Power BI, process automation, custom software for operations-heavy SMBs (mfg/warehouse/logistics/transport/inventory).
+- **Sender**: Z & C Consultants <management@z-cconsultants.com>, phone +1 (214) 997-4331. NO Calendly.
+- **Email domain**: z-cconsultants.com — must be verified in Resend before sends work.
+- **Brand constants**: `supabase/functions/_shared/brand.ts` is single source of truth.
+- **Tech**: Supabase (RLS on, verify_jwt=false), Deno 0.224.0. OpenAI (gpt-4o, gpt-4o-mini). Perplexity Sonar for enrichment.
+- **AI Config**: OpenAI uses `max_tokens`. OMIT `temperature` entirely.
+- **Email limits**: Max 2 req/min on Resend. 35s delay in send loops. Daily cap: 50.
+- **Auth**: Password login at /sales/login + 8-digit OTP fallback.
+- **Hard exclusions**: never scout/email healthcare, insurance, medical, dental, veterinary, wellness, therapy, cosmetic.
+- **Cost guards**: Discovery capped at 5 runs/day (override with `force:true`). Drip interval ≥15 min.
 
 ## Memories
 - [Multi-City Rotation](mem://features/outreach-agent/multi-city-rotation) — Rotates through 100 US cities every 30 mins
