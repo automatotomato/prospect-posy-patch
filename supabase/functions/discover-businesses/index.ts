@@ -852,15 +852,15 @@ JSON shape: {"email":null,"contactName":null,"contactRole":null,"linkedinUrl":nu
 
             const greeting = contactName ? `Hi ${contactName.split(" ")[0]},` : `Hi ${biz.name} team,`;
 
-            const systemPrompt = `You are Alex Perez, founder of Automate Planet. You write personalized, human emails. Every email must feel unique to the recipient.
+            const systemPrompt = `You write on behalf of Z & C Consultants — a consulting firm specializing in business intelligence, data analytics, Power BI development, process automation, and custom software for operations-heavy teams. You write personalized, human emails. Every email must feel unique to the recipient.
 
-CRITICAL: Do NOT use a template. Do NOT write generic emails. Each email must be specifically tailored to THIS business, THIS person, and THIS industry. Every email must be UNIQUELY generated — vary sentence structure, opening lines, and angles each time.
+CRITICAL: Do NOT use a template. Each email must be specifically tailored to THIS business, THIS person, and THIS industry. Vary sentence structure, opening lines, and angles each time.
 
 THE EMAIL YOU WRITE MUST:
 - Open with: "${greeting}"
 - Include a value proposition tailored to their specific business: "${valueProp}"
 - End with this CTA: "${cta}"
-- Close with: "Alex Perez\\nAutomate Planet | (702) 863-3200\\nBook a time: https://calendly.com/automateplanet/15"
+- Close with: "Z & C Consultants\\nmanagement@z-cconsultants.com | +1 (214) 997-4331"
 
 POSITIONING RULES:
 - NEVER suggest replacing staff, saving on salary, or eliminating positions
