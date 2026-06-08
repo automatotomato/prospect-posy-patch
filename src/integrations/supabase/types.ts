@@ -663,6 +663,66 @@ export type Database = {
           },
         ]
       }
+      sales_leads: {
+        Row: {
+          business_name: string
+          city: string | null
+          created_at: string
+          email: string | null
+          email_body: string | null
+          email_generated_at: string | null
+          email_subject: string | null
+          id: string
+          industry: string | null
+          notes: string | null
+          owner_id: string
+          phone: string | null
+          source: string | null
+          state: string | null
+          status: string
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          business_name: string
+          city?: string | null
+          created_at?: string
+          email?: string | null
+          email_body?: string | null
+          email_generated_at?: string | null
+          email_subject?: string | null
+          id?: string
+          industry?: string | null
+          notes?: string | null
+          owner_id: string
+          phone?: string | null
+          source?: string | null
+          state?: string | null
+          status?: string
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          business_name?: string
+          city?: string | null
+          created_at?: string
+          email?: string | null
+          email_body?: string | null
+          email_generated_at?: string | null
+          email_subject?: string | null
+          id?: string
+          industry?: string | null
+          notes?: string | null
+          owner_id?: string
+          phone?: string | null
+          source?: string | null
+          state?: string | null
+          status?: string
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
       scheduled_emails: {
         Row: {
           body: string
