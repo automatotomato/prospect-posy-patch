@@ -319,8 +319,8 @@ export default function SalesDashboard() {
 
           {/* ============ TABS + PIPELINE ============ */}
           <Tabs value={tab} onValueChange={setTab} className="space-y-4">
-            <div className="border-b border-border">
-              <TabsList className="bg-transparent h-auto p-0 gap-6 rounded-none">
+            <div className="border-b border-border overflow-x-auto scrollbar-thin -mx-4 md:mx-0 px-4 md:px-0">
+              <TabsList className="bg-transparent h-auto p-0 gap-4 md:gap-6 rounded-none w-max min-w-full justify-start">
                 <PillTab value="pipeline" current={tab}>Pipeline</PillTab>
                 <PillTab value="followups" current={tab} count={dueFollowUps.length} accent>Follow-ups</PillTab>
                 <PillTab value="how-it-works" current={tab}>How It Works</PillTab>
