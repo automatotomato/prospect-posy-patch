@@ -1,0 +1,336 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Card } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "@/components/ui/use-toast";
+import { ArrowLeft, Plus, Trash2, Save, Building2, MapPin, MessageSquare, Users, X } from "lucide-react";
+
+type Template = { id: string; name: string; subject: string; body: string; category: string | null; is_default: boolean };
+type Member = { id: string; email: string; name: string | null; role: string; accepted_at: string | null };
+
+export default function Settings() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Discovery
+  const [verticals, setVerticals] = useState<string[]>([]);
+  const [locations, setLocations] = useState<string[]>([]);
+  const [targetCount, setTargetCount] = useState(50);
+  const [newVertical, setNewVertical] = useState("");
+  const [newLocation, setNewLocation] = useState("");
+
+  // Templates
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [editing, setEditing] = useState<Template | null>(null);
+
+  // Team
+  const [members, setMembers] = useState<Member[]>([]);
+  const [newMemberEmail, setNewMemberEmail] = useState("");
+  const [newMemberName, setNewMemberName] = useState("");
+  const [newMemberRole, setNewMemberRole] = useState<"admin" | "sales_rep">("sales_rep");
+
+  useEffect(() => {
+    if (!user) return;
+    void loadAll();
+  }, [user]);
+
+  async function loadAll() {
+    setLoading(true);
+    const { data: roleRow } = await supabase.from("user_roles").select("role").eq("user_id", user!.id).eq("role", "admin").maybeSingle();
+    setIsAdmin(!!roleRow);
+
+    const { data: discovery } = await supabase.from("agent_settings").select("setting_value").eq("setting_key", "discovery").maybeSingle();
+    if (discovery?.setting_value) {
+      const v = discovery.setting_value as any;
+      setVerticals(v.verticals || []);
+      setLocations(v.locations || []);
+      setTargetCount(v.targetCount || 50);
+    }
+
+    const { data: tpls } = await supabase.from("email_templates").select("*").order("created_at", { ascending: false });
+    setTemplates((tpls as Template[]) || []);
+
+    const { data: mems } = await supabase.from("allowed_users").select("id, email, name, role, accepted_at").order("invited_at", { ascending: false });
+    setMembers((mems as Member[]) || []);
+    setLoading(false);
+  }
+
+  async function saveDiscovery() {
+    const { error } = await supabase.from("agent_settings").update({
+      setting_value: { verticals, locations, targetCount, rotateCities: true } as any,
+    }).eq("setting_key", "discovery");
+    if (error) return toast({ title: "Save failed", description: error.message, variant: "destructive" });
+    toast({ title: "Discovery settings saved" });
+  }
+
+  async function saveTemplate() {
+    if (!editing) return;
+    if (!editing.name || !editing.subject || !editing.body) {
+      return toast({ title: "All fields required", variant: "destructive" });
+    }
+    if (editing.id) {
+      const { error } = await supabase.from("email_templates").update({
+        name: editing.name, subject: editing.subject, body: editing.body, category: editing.category,
+      }).eq("id", editing.id);
+      if (error) return toast({ title: "Save failed", description: error.message, variant: "destructive" });
+    } else {
+      const { error } = await supabase.from("email_templates").insert({
+        name: editing.name, subject: editing.subject, body: editing.body, category: editing.category, is_default: false,
+      });
+      if (error) return toast({ title: "Save failed", description: error.message, variant: "destructive" });
+    }
+    toast({ title: "Template saved" });
+    setEditing(null);
+    void loadAll();
+  }
+
+  async function deleteTemplate(id: string) {
+    if (!confirm("Delete this template?")) return;
+    const { error } = await supabase.from("email_templates").delete().eq("id", id);
+    if (error) return toast({ title: "Delete failed", description: error.message, variant: "destructive" });
+    toast({ title: "Template deleted" });
+    void loadAll();
+  }
+
+  async function addMember() {
+    if (!newMemberEmail.trim()) return toast({ title: "Email required", variant: "destructive" });
+    const { error } = await supabase.from("allowed_users").insert({
+      email: newMemberEmail.trim().toLowerCase(),
+      name: newMemberName.trim() || null,
+      role: newMemberRole as any,
+      invited_by: user!.id,
+    });
+    if (error) return toast({ title: "Failed to add", description: error.message, variant: "destructive" });
+    toast({ title: "Team member invited", description: "They can sign in with this email." });
+    setNewMemberEmail(""); setNewMemberName(""); setNewMemberRole("sales_rep");
+    void loadAll();
+  }
+
+  async function removeMember(id: string) {
+    if (!confirm("Remove this team member?")) return;
+    const { error } = await supabase.from("allowed_users").delete().eq("id", id);
+    if (error) return toast({ title: "Remove failed", description: error.message, variant: "destructive" });
+    toast({ title: "Member removed" });
+    void loadAll();
+  }
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading settings…</div>;
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="h-16 border-b border-border bg-background/80 backdrop-blur-md px-6 lg:px-8 flex items-center justify-between sticky top-0 z-20">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={() => navigate("/sales")}>
+            <ArrowLeft className="w-4 h-4 mr-2" />Back
+          </Button>
+          <div>
+            <h1 className="font-display text-lg font-semibold">Settings</h1>
+            <p className="text-xs text-muted-foreground">Configure discovery, messaging, and team access</p>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-5xl mx-auto px-6 lg:px-8 py-8">
+        <Tabs defaultValue="discovery" className="space-y-6">
+          <TabsList className="grid grid-cols-3 w-full max-w-xl">
+            <TabsTrigger value="discovery"><Building2 className="w-4 h-4 mr-2" />Discovery</TabsTrigger>
+            <TabsTrigger value="messaging"><MessageSquare className="w-4 h-4 mr-2" />Messaging</TabsTrigger>
+            <TabsTrigger value="team"><Users className="w-4 h-4 mr-2" />Team</TabsTrigger>
+          </TabsList>
+
+          {/* DISCOVERY */}
+          <TabsContent value="discovery" className="space-y-6">
+            <Card className="p-6 space-y-6">
+              <div>
+                <h2 className="font-display text-base font-semibold flex items-center gap-2"><Building2 className="w-4 h-4 text-primary" />Verticals</h2>
+                <p className="text-xs text-muted-foreground mt-1">Industries to target during lead discovery</p>
+                <div className="flex flex-wrap gap-2 mt-4">
+                  {verticals.map((v) => (
+                    <Badge key={v} variant="secondary" className="gap-1.5 py-1.5 px-3">
+                      {v}
+                      {isAdmin && <button onClick={() => setVerticals(verticals.filter(x => x !== v))}><X className="w-3 h-3" /></button>}
+                    </Badge>
+                  ))}
+                  {verticals.length === 0 && <span className="text-xs text-muted-foreground">No verticals yet</span>}
+                </div>
+                {isAdmin && (
+                  <div className="flex gap-2 mt-4">
+                    <Input placeholder="e.g. manufacturing" value={newVertical} onChange={e => setNewVertical(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && newVertical.trim()) { setVerticals([...verticals, newVertical.trim()]); setNewVertical(""); } }} />
+                    <Button onClick={() => { if (newVertical.trim()) { setVerticals([...verticals, newVertical.trim()]); setNewVertical(""); } }}><Plus className="w-4 h-4" /></Button>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-border pt-6">
+                <h2 className="font-display text-base font-semibold flex items-center gap-2"><MapPin className="w-4 h-4 text-primary" />Locations</h2>
+                <p className="text-xs text-muted-foreground mt-1">Cities to rotate through</p>
+                <div className="flex flex-wrap gap-2 mt-4">
+                  {locations.map((l) => (
+                    <Badge key={l} variant="secondary" className="gap-1.5 py-1.5 px-3">
+                      {l}
+                      {isAdmin && <button onClick={() => setLocations(locations.filter(x => x !== l))}><X className="w-3 h-3" /></button>}
+                    </Badge>
+                  ))}
+                  {locations.length === 0 && <span className="text-xs text-muted-foreground">No locations yet</span>}
+                </div>
+                {isAdmin && (
+                  <div className="flex gap-2 mt-4">
+                    <Input placeholder="e.g. Las Vegas, NV" value={newLocation} onChange={e => setNewLocation(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && newLocation.trim()) { setLocations([...locations, newLocation.trim()]); setNewLocation(""); } }} />
+                    <Button onClick={() => { if (newLocation.trim()) { setLocations([...locations, newLocation.trim()]); setNewLocation(""); } }}><Plus className="w-4 h-4" /></Button>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-border pt-6 grid grid-cols-2 gap-4 max-w-md">
+                <div>
+                  <Label htmlFor="targetCount">Target leads per run</Label>
+                  <Input id="targetCount" type="number" min={1} max={500} value={targetCount} onChange={e => setTargetCount(Number(e.target.value))} disabled={!isAdmin} />
+                </div>
+              </div>
+
+              {isAdmin && (
+                <div className="flex justify-end pt-4 border-t border-border">
+                  <Button onClick={saveDiscovery}><Save className="w-4 h-4 mr-2" />Save discovery</Button>
+                </div>
+              )}
+            </Card>
+          </TabsContent>
+
+          {/* MESSAGING */}
+          <TabsContent value="messaging" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="font-display text-base font-semibold">Email templates</h2>
+                <p className="text-xs text-muted-foreground">Edit subject lines and message wording used in outreach</p>
+              </div>
+              {isAdmin && (
+                <Button onClick={() => setEditing({ id: "", name: "", subject: "", body: "", category: "outreach", is_default: false })}>
+                  <Plus className="w-4 h-4 mr-2" />New template
+                </Button>
+              )}
+            </div>
+
+            {editing && (
+              <Card className="p-6 space-y-4 border-primary/30">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-display font-semibold">{editing.id ? "Edit template" : "New template"}</h3>
+                  <Button variant="ghost" size="sm" onClick={() => setEditing(null)}><X className="w-4 h-4" /></Button>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Name</Label>
+                    <Input value={editing.name} onChange={e => setEditing({ ...editing, name: e.target.value })} placeholder="Cold intro v1" />
+                  </div>
+                  <div>
+                    <Label>Category</Label>
+                    <Input value={editing.category || ""} onChange={e => setEditing({ ...editing, category: e.target.value })} placeholder="outreach / follow-up" />
+                  </div>
+                </div>
+                <div>
+                  <Label>Subject</Label>
+                  <Input value={editing.subject} onChange={e => setEditing({ ...editing, subject: e.target.value })} placeholder="Quick idea for {{company}}" />
+                </div>
+                <div>
+                  <Label>Body</Label>
+                  <Textarea rows={10} value={editing.body} onChange={e => setEditing({ ...editing, body: e.target.value })} placeholder="Hi {{first_name}}, ..." />
+                  <p className="text-[11px] text-muted-foreground mt-1">Variables: <code>{"{{first_name}}"}</code>, <code>{"{{company}}"}</code>, <code>{"{{city}}"}</code></p>
+                </div>
+                <div className="flex justify-end">
+                  <Button onClick={saveTemplate}><Save className="w-4 h-4 mr-2" />Save template</Button>
+                </div>
+              </Card>
+            )}
+
+            <div className="space-y-3">
+              {templates.length === 0 && (
+                <Card className="p-8 text-center text-sm text-muted-foreground">No templates yet. {isAdmin && "Click \"New template\" to create one."}</Card>
+              )}
+              {templates.map(t => (
+                <Card key={t.id} className="p-5 flex items-start justify-between gap-4 hover:border-primary/30 transition-colors">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-display font-semibold">{t.name}</h3>
+                      {t.category && <Badge variant="outline" className="text-[10px]">{t.category}</Badge>}
+                      {t.is_default && <Badge className="text-[10px]">Default</Badge>}
+                    </div>
+                    <p className="text-sm font-medium mt-1">{t.subject}</p>
+                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2 whitespace-pre-wrap">{t.body}</p>
+                  </div>
+                  {isAdmin && (
+                    <div className="flex gap-2 shrink-0">
+                      <Button variant="outline" size="sm" onClick={() => setEditing(t)}>Edit</Button>
+                      <Button variant="ghost" size="sm" onClick={() => deleteTemplate(t.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                    </div>
+                  )}
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          {/* TEAM */}
+          <TabsContent value="team" className="space-y-6">
+            {isAdmin && (
+              <Card className="p-6 space-y-4">
+                <div>
+                  <h2 className="font-display text-base font-semibold">Invite team member</h2>
+                  <p className="text-xs text-muted-foreground">They can sign in with this email using the 8-digit code flow.</p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <Input placeholder="Full name" value={newMemberName} onChange={e => setNewMemberName(e.target.value)} />
+                  <Input placeholder="email@company.com" value={newMemberEmail} onChange={e => setNewMemberEmail(e.target.value)} className="md:col-span-2" />
+                  <select
+                    value={newMemberRole}
+                    onChange={e => setNewMemberRole(e.target.value as any)}
+                    className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    <option value="sales_rep">Sales rep</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+                <div className="flex justify-end">
+                  <Button onClick={addMember}><Plus className="w-4 h-4 mr-2" />Add member</Button>
+                </div>
+              </Card>
+            )}
+
+            <Card className="divide-y divide-border">
+              <div className="p-4 grid grid-cols-12 gap-4 text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+                <div className="col-span-4">Name</div>
+                <div className="col-span-4">Email</div>
+                <div className="col-span-2">Role</div>
+                <div className="col-span-2 text-right">Status</div>
+              </div>
+              {members.length === 0 && <div className="p-8 text-center text-sm text-muted-foreground">No team members yet.</div>}
+              {members.map(m => (
+                <div key={m.id} className="p-4 grid grid-cols-12 gap-4 items-center text-sm hover:bg-muted/40 transition-colors">
+                  <div className="col-span-4 font-medium">{m.name || "—"}</div>
+                  <div className="col-span-4 text-muted-foreground truncate">{m.email}</div>
+                  <div className="col-span-2"><Badge variant="outline" className="text-[10px]">{m.role}</Badge></div>
+                  <div className="col-span-2 flex items-center justify-end gap-2">
+                    <Badge variant={m.accepted_at ? "default" : "secondary"} className="text-[10px]">
+                      {m.accepted_at ? "Active" : "Pending"}
+                    </Badge>
+                    {isAdmin && (
+                      <Button variant="ghost" size="sm" onClick={() => removeMember(m.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </main>
+    </div>
+  );
+}
