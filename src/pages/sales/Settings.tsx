@@ -10,7 +10,16 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/use-toast";
-import { ArrowLeft, Plus, Trash2, Save, Building2, MapPin, MessageSquare, Users, X } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Save, Building2, MapPin, MessageSquare, Users, X, Mail, Clock, RotateCcw, Eye } from "lucide-react";
+import {
+  DEFAULT_SEQUENCE,
+  loadSequence,
+  saveSequence,
+  renderVars,
+  TouchpointEditor,
+  type Touchpoint,
+} from "@/components/sales/FollowUpSequencePanel";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 type Template = { id: string; name: string; subject: string; body: string; category: string | null; is_default: boolean };
 type Member = { id: string; email: string; name: string | null; role: string; accepted_at: string | null };
@@ -37,6 +46,13 @@ export default function Settings() {
   const [newMemberEmail, setNewMemberEmail] = useState("");
   const [newMemberName, setNewMemberName] = useState("");
   const [newMemberRole, setNewMemberRole] = useState<"admin" | "sales_rep">("sales_rep");
+
+  // Sequence (live messages we actually send)
+  const [sequence, setSequence] = useState<Touchpoint[]>(() => loadSequence());
+  const [editingStep, setEditingStep] = useState<Touchpoint | null>(null);
+  const [previewStepId, setPreviewStepId] = useState<string | null>(null);
+
+  useEffect(() => { saveSequence(sequence); }, [sequence]);
 
   useEffect(() => {
     if (!user) return;
