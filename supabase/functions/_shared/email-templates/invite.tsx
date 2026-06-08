@@ -27,14 +27,14 @@ export const InviteEmail = ({
 }: InviteEmailProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>You've been invited to Automate Planet</Preview>
+    <Preview>You've been invited to Z & C Consultants</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Text style={brand}>⚡ Automate Planet</Text>
+        <Text style={brand}>Z & C Consultants</Text>
         <Heading style={h1}>You've been invited!</Heading>
         <Text style={text}>
           You've been invited to join{' '}
-          <Link href={siteUrl} style={link}><strong>Automate Planet</strong></Link>.
+          <Link href={siteUrl} style={link}><strong>Z & C Consultants</strong></Link>.
           Click below to accept and create your account.
         </Text>
         <Button style={button} href={confirmationUrl}>

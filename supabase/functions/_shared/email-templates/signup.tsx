@@ -29,10 +29,10 @@ export const SignupEmail = ({
 }: SignupEmailProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>Confirm your email for Automate Planet</Preview>
+    <Preview>Confirm your email for Z & C Consultants</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Text style={brand}>⚡ Automate Planet</Text>
+        <Text style={brand}>Z & C Consultants</Text>
         <Heading style={h1}>Welcome aboard!</Heading>
         <Text style={text}>
           Thanks for signing up! Confirm your email (

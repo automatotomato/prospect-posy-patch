@@ -31,7 +31,7 @@ export default function Today() {
   const { data: replies } = useReplyIntents();
   const { data: demos } = useTodayDemos();
 
-  const firstName = user?.user_metadata?.full_name?.split(' ')[0] || 'Alex';
+  const firstName = user?.user_metadata?.full_name?.split(' ')[0] || 'there';
   const greeting = (() => {
     const h = new Date().getHours();
     if (h < 12) return 'Good morning';
