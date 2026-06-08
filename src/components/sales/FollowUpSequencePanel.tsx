@@ -25,9 +25,9 @@ export type Touchpoint = {
   angle: string;
 };
 
-const STORAGE_KEY = "sales.followup.sequence.v1";
+export const SEQUENCE_STORAGE_KEY = "sales.followup.sequence.v1";
 
-const DEFAULT_SEQUENCE: Touchpoint[] = [
+export const DEFAULT_SEQUENCE: Touchpoint[] = [
   {
     id: "step-1", step: 1, channel: "email", delayDays: 0, angle: "Intro / spreadsheet pain",
     subject: "Cleaner reporting for {{company}}",
@@ -116,9 +116,9 @@ Wishing {{company}} a strong quarter.
   },
 ];
 
-function loadSequence(): Touchpoint[] {
+export function loadSequence(): Touchpoint[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(SEQUENCE_STORAGE_KEY);
     if (!raw) return DEFAULT_SEQUENCE;
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed) || parsed.length === 0) return DEFAULT_SEQUENCE;
@@ -128,11 +128,11 @@ function loadSequence(): Touchpoint[] {
   }
 }
 
-function saveSequence(seq: Touchpoint[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(seq));
+export function saveSequence(seq: Touchpoint[]) {
+  localStorage.setItem(SEQUENCE_STORAGE_KEY, JSON.stringify(seq));
 }
 
-function renderVars(text: string, lead?: Lead) {
+export function renderVars(text: string, lead?: { business_name?: string | null; city?: string | null }) {
   return text
     .replace(/\{\{first_name\}\}/g, (lead?.business_name || "there").split(" ")[0] || "there")
     .replace(/\{\{company\}\}/g, lead?.business_name || "your business")
@@ -413,7 +413,7 @@ export function FollowUpSequencePanel({
   );
 }
 
-function TouchpointEditor({
+export function TouchpointEditor({
   t, onChange, onSave,
 }: { t: Touchpoint; onChange: (t: Touchpoint) => void; onSave: () => void }) {
   return (
