@@ -11,6 +11,7 @@ import NotFound from "./pages/NotFound";
 import Team from "./pages/Team";
 import SalesLogin from "./pages/sales/Login";
 import SalesDashboard from "./pages/sales/Dashboard";
+import SalesSettings from "./pages/sales/Settings";
 
 const queryClient = new QueryClient();
 
