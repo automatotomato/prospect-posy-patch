@@ -91,6 +91,7 @@ export default function SalesDashboard() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [tab, setTab] = useState("pipeline");
   const [search, setSearch] = useState("");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
     if (!user) navigate("/sales/login", { replace: true });
