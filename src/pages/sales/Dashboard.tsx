@@ -160,54 +160,77 @@ export default function SalesDashboard() {
 
   const initials = (user?.email || "ZC").slice(0, 2).toUpperCase();
 
-  return (
-    <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">
-      {/* ============ SIDEBAR ============ */}
-      <aside className="w-64 shrink-0 border-r border-border bg-sidebar flex flex-col">
-        <div className="p-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center font-display font-bold text-primary-foreground shadow-lg shadow-primary/20">
-              Z&amp;C
-            </div>
-            <div className="min-w-0">
-              <div className="font-display font-semibold text-sm leading-tight">Z &amp; C</div>
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">Consultants</div>
-            </div>
+  const sidebarContent = (
+    <>
+      <div className="p-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center font-display font-bold text-primary-foreground shadow-lg shadow-primary/20">
+            Z&amp;C
+          </div>
+          <div className="min-w-0">
+            <div className="font-display font-semibold text-sm leading-tight">Z &amp; C</div>
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">Consultants</div>
           </div>
         </div>
+      </div>
 
-        <nav className="flex-1 px-3 space-y-1">
-          <SidebarLink active icon={<LayoutDashboard className="w-4 h-4" />} label="Dashboard" />
-          <SidebarLink icon={<Kanban className="w-4 h-4" />} label="Pipeline" onClick={() => setTab("pipeline")} />
-          <SidebarLink icon={<Users className="w-4 h-4" />} label="Leads" onClick={() => setTab("all")} />
-          <SidebarLink icon={<ActivityIcon className="w-4 h-4" />} label="Activity" onClick={() => setTab("activity")} />
-          <SidebarLink icon={<Clock className="w-4 h-4" />} label="Follow-ups" badge={dueFollowUps.length || undefined} onClick={() => setTab("followups")} />
-          <SidebarLink icon={<HelpCircle className="w-4 h-4" />} label="How It Works" active={tab === "how-it-works"} onClick={() => setTab("how-it-works")} className="ml-5 w-[calc(100%-1.25rem)]" />
-        </nav>
+      <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
+        <SidebarLink active={tab === "pipeline"} icon={<LayoutDashboard className="w-4 h-4" />} label="Dashboard" onClick={() => { setTab("pipeline"); setMobileNavOpen(false); }} />
+        <SidebarLink active={tab === "pipeline"} icon={<Kanban className="w-4 h-4" />} label="Pipeline" onClick={() => { setTab("pipeline"); setMobileNavOpen(false); }} />
+        <SidebarLink active={tab === "all"} icon={<Users className="w-4 h-4" />} label="Leads" onClick={() => { setTab("all"); setMobileNavOpen(false); }} />
+        <SidebarLink active={tab === "activity"} icon={<ActivityIcon className="w-4 h-4" />} label="Activity" onClick={() => { setTab("activity"); setMobileNavOpen(false); }} />
+        <SidebarLink active={tab === "followups"} icon={<Clock className="w-4 h-4" />} label="Follow-ups" badge={dueFollowUps.length || undefined} onClick={() => { setTab("followups"); setMobileNavOpen(false); }} />
+        <SidebarLink icon={<HelpCircle className="w-4 h-4" />} label="How It Works" active={tab === "how-it-works"} onClick={() => { setTab("how-it-works"); setMobileNavOpen(false); }} className="ml-5 w-[calc(100%-1.25rem)]" />
+      </nav>
 
-        <div className="p-3 border-t border-border space-y-1">
-          <SidebarLink icon={<SettingsIcon className="w-4 h-4" />} label="Settings" onClick={() => navigate("/sales/settings")} />
-          <button
-            onClick={() => { signOut(); navigate("/sales/login"); }}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-          >
-            <LogOut className="w-4 h-4" />Sign out
-          </button>
-        </div>
+      <div className="p-3 border-t border-border space-y-1">
+        <SidebarLink icon={<SettingsIcon className="w-4 h-4" />} label="Settings" onClick={() => navigate("/sales/settings")} />
+        <button
+          onClick={() => { signOut(); navigate("/sales/login"); }}
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+        >
+          <LogOut className="w-4 h-4" />Sign out
+        </button>
+      </div>
+    </>
+  );
+
+  return (
+    <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">
+      {/* ============ SIDEBAR (desktop) ============ */}
+      <aside className="hidden md:flex w-64 shrink-0 border-r border-border bg-sidebar flex-col">
+        {sidebarContent}
       </aside>
+
+      {/* ============ SIDEBAR (mobile drawer) ============ */}
+      <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+        <SheetContent side="left" className="p-0 w-72 bg-sidebar flex flex-col">
+          {sidebarContent}
+        </SheetContent>
+      </Sheet>
 
       {/* ============ MAIN ============ */}
       <main className="flex-1 flex flex-col min-w-0">
         {/* Topbar */}
-        <header className="h-16 border-b border-border bg-background/80 backdrop-blur-md px-6 lg:px-8 flex items-center justify-between sticky top-0 z-20">
-          <div>
-            <h1 className="font-display text-lg font-semibold leading-tight">Sales Pipeline</h1>
-            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              Live outbound activity
-            </p>
+        <header className="h-16 border-b border-border bg-background/80 backdrop-blur-md px-4 md:px-6 lg:px-8 flex items-center justify-between sticky top-0 z-20 gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <button
+              onClick={() => setMobileNavOpen(true)}
+              className="md:hidden p-2 -ml-2 text-muted-foreground hover:text-foreground"
+              aria-label="Open menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <div className="min-w-0">
+              <h1 className="font-display text-base md:text-lg font-semibold leading-tight truncate">Sales Pipeline</h1>
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="hidden sm:inline">Live outbound activity</span>
+                <span className="sm:hidden">Live</span>
+              </p>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3">
             <div className="relative hidden md:block">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -223,13 +246,24 @@ export default function SalesDashboard() {
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-primary border-2 border-background" />
               )}
             </button>
-            <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center text-xs font-semibold border border-border">
+            <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center text-xs font-semibold border border-border shrink-0">
               {initials}
             </div>
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-6 lg:p-8 space-y-8">
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6 md:space-y-8">
+          {/* Mobile search */}
+          <div className="md:hidden relative">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search leads…"
+              className="pl-9 w-full bg-card border-border h-9 rounded-full text-sm"
+            />
+          </div>
+
           {/* ============ KPI ROW ============ */}
           <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <KpiTile label="Total Leads" value={stats.total} delta={stats.total > 0 ? `${stats.total} active` : "—"} progress={Math.min(100, stats.total * 4)} />
