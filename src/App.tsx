@@ -26,6 +26,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/sales/login" element={<SalesLogin />} />
             <Route path="/sales" element={<ProtectedRoute><SalesDashboard /></ProtectedRoute>} />
+            <Route path="/sales/settings" element={<ProtectedRoute><SalesSettings /></ProtectedRoute>} />
             <Route path="/team" element={<AdminRoute><Team /></AdminRoute>} />
             {/* Legacy routes — consolidated into the single Sales dashboard */}
             <Route path="/" element={<Navigate to="/sales" replace />} />
