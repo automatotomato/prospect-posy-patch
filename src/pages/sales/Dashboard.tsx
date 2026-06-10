@@ -12,11 +12,12 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   LogOut, Sparkles, Copy, Check, RefreshCw, Search, Trash2,
   ListChecks, Clock, Users, Send, MoreVertical, ChevronRight, Activity as ActivityIcon, TrendingUp,
   LayoutDashboard, Kanban, Settings as SettingsIcon, Bell, Building2, MapPin, HelpCircle, Menu,
-  Mail, Camera,
+  Mail, Camera, X,
 } from "lucide-react";
 import { useSalesLeads, STAGES, type Lead } from "@/hooks/useSalesLeads";
 import { FollowUpSequencePanel } from "@/components/sales/FollowUpSequencePanel";
@@ -83,8 +84,33 @@ function activityLabel(a: { type: string; note: string | null }) {
 export default function SalesDashboard() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const { leads, activities, loading, load, logActivity, setStage, scheduleFollowUp, removeLead, stats } =
+  const { leads, setLeads, activities, loading, load, logActivity, setStage, scheduleFollowUp, removeLead, stats } =
     useSalesLeads(user?.id);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const toggleOne = (id: string) => setSelected((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const clearSelection = () => setSelected(new Set());
+
+  const bulkDelete = async (ids: string[]) => {
+    if (!ids.length) return;
+    if (!confirm(`Delete ${ids.length} lead${ids.length > 1 ? "s" : ""}? This cannot be undone.`)) return;
+    const { error } = await supabase.from("sales_leads").delete().in("id", ids);
+    if (error) return toast.error(error.message);
+    setLeads((p) => p.filter((l) => !ids.includes(l.id)));
+    clearSelection();
+    toast.success(`Deleted ${ids.length} leads`);
+  };
+
+  const bulkSetStage = async (ids: string[], stage: string) => {
+    if (!ids.length) return;
+    const patch: any = { stage, last_activity_at: new Date().toISOString() };
+    if (stage === "queued") patch.queued_at = new Date().toISOString();
+    const { data, error } = await supabase.from("sales_leads").update(patch).in("id", ids).select();
+    if (error) return toast.error(error.message);
+    const map = new Map((data as Lead[]).map((d) => [d.id, d]));
+    setLeads((p) => p.map((l) => map.get(l.id) || l));
+    clearSelection();
+    toast.success(`Moved ${ids.length} leads to ${STAGES.find((s) => s.id === stage)?.label || stage}`);
+  };
 
   const [discovering, setDiscovering] = useState(false);
   const [lastScout, setLastScout] = useState<{ state: string; inserted: number } | null>(null);
