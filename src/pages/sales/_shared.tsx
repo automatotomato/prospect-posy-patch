@@ -17,7 +17,7 @@ export type SalesCtx = {
   // data
   leads: Lead[];
   setLeads: React.Dispatch<React.SetStateAction<Lead[]>>;
-  activities: { id: string; lead_id: string; type: string; note: string | null; created_at: string }[];
+  activities: import("@/hooks/useSalesLeads").Activity[];
   loading: boolean;
   load: () => Promise<void> | void;
   logActivity: (leadId: string, type: string, note?: string, metadata?: any) => Promise<void>;
