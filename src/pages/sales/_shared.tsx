@@ -45,8 +45,8 @@ export type SalesCtx = {
   selected: Set<string>;
   toggleOne: (id: string) => void;
   clearSelection: () => void;
-  bulkDelete: (ids: string[]) => Promise<void>;
-  bulkSetStage: (ids: string[], stage: string) => Promise<void>;
+  bulkDelete: (ids: string[]) => Promise<any>;
+  bulkSetStage: (ids: string[], stage: string) => Promise<any>;
 
   // scout
   discovering: boolean;
