@@ -80,19 +80,17 @@ async function openaiJson(apiKey: string, system: string, user: string, useWebSe
   try { return JSON.parse(content); } catch { return {}; }
 }
 
-async function scrapeText(url: string, paths: string[] = ["", "/contact", "/about", "/contact-us"]): Promise<string> {
-  const out: string[] = [];
-  for (const p of paths) {
+async function scrapeText(url: string, paths: string[] = ["", "/contact"]): Promise<string> {
+  const results = await Promise.all(paths.map(async (p) => {
     try {
       const u = url.replace(/\/$/, "") + p;
-      const r = await fetch(u, { headers: { "User-Agent": "Mozilla/5.0 (LeadScout)" }, signal: AbortSignal.timeout(7000) });
-      if (!r.ok) continue;
+      const r = await fetch(u, { headers: { "User-Agent": "Mozilla/5.0 (LeadScout)" }, signal: AbortSignal.timeout(4000) });
+      if (!r.ok) return "";
       const html = await r.text();
-      out.push(html.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<style[\s\S]*?<\/style>/gi, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 8000));
-      if (out.join(" ").length > 20000) break;
-    } catch { /* ignore */ }
-  }
-  return out.join("\n");
+      return html.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<style[\s\S]*?<\/style>/gi, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 6000);
+    } catch { return ""; }
+  }));
+  return results.join("\n");
 }
 
 function extractEmailsFromText(text: string, domain: string | null): string[] {
