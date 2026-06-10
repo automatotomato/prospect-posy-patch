@@ -287,6 +287,24 @@ export default function SalesDashboard() {
             <KpiTile label="Won" value={stats.by.won || 0} delta="Closed deals" highlight progress={Math.min(100, (stats.by.won || 0) * 10)} />
           </section>
 
+          {/* ============ SCAN BUSINESS CARD ============ */}
+          <section className="bg-gradient-to-br from-primary/15 via-card to-card border border-primary/30 rounded-2xl p-4 md:p-5 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xl">
+            <div className="flex items-start md:items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-primary/20 text-primary flex items-center justify-center shrink-0">
+                <Camera className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="font-display font-semibold text-sm">Scan a business card</h2>
+                <p className="text-xs text-muted-foreground">
+                  Snap or upload a photo — AI extracts contact details and drops the lead into your pipeline.
+                </p>
+              </div>
+            </div>
+            <Button onClick={() => setScanOpen(true)} className="gap-2 shrink-0">
+              <Camera className="w-4 h-4" />Scan card
+            </Button>
+          </section>
+
           {/* ============ DISCOVER ============ */}
           <section className="bg-card border border-border rounded-2xl overflow-hidden shadow-xl">
             <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-foreground/[0.02]">
