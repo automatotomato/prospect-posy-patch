@@ -330,6 +330,8 @@ export default function SalesDashboard() {
                 <PillTab value="pipeline" current={tab}>Pipeline</PillTab>
                 <PillTab value="followups" current={tab} count={dueFollowUps.length} accent>Follow-ups</PillTab>
                 <PillTab value="how-it-works" current={tab}>How It Works</PillTab>
+                <PillTab value="clients" current={tab}>My Contacts</PillTab>
+                <PillTab value="campaigns" current={tab}>Campaigns</PillTab>
                 <PillTab value="queue" current={tab} count={queuedLeads.length}>Queue</PillTab>
                 <PillTab value="all" current={tab} count={leads.length}>All Leads</PillTab>
                 <PillTab value="activity" current={tab}>Activity</PillTab>
