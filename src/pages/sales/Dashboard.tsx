@@ -16,9 +16,12 @@ import {
   LogOut, Sparkles, Copy, Check, RefreshCw, Search, Trash2,
   ListChecks, Clock, Users, Send, MoreVertical, ChevronRight, Activity as ActivityIcon, TrendingUp,
   LayoutDashboard, Kanban, Settings as SettingsIcon, Bell, Building2, MapPin, HelpCircle, Menu,
+  Mail,
 } from "lucide-react";
 import { useSalesLeads, STAGES, type Lead } from "@/hooks/useSalesLeads";
 import { FollowUpSequencePanel } from "@/components/sales/FollowUpSequencePanel";
+import { ClientsPanel } from "@/components/sales/ClientsPanel";
+import { CampaignsPanel } from "@/components/sales/CampaignsPanel";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const VERTICALS = [
@@ -182,6 +185,8 @@ export default function SalesDashboard() {
         <SidebarLink active={tab === "activity"} icon={<ActivityIcon className="w-4 h-4" />} label="Activity" onClick={() => { setTab("activity"); setMobileNavOpen(false); }} />
         <SidebarLink active={tab === "followups"} icon={<Clock className="w-4 h-4" />} label="Follow-ups" badge={dueFollowUps.length || undefined} onClick={() => { setTab("followups"); setMobileNavOpen(false); }} />
         <SidebarLink icon={<HelpCircle className="w-4 h-4" />} label="How It Works" active={tab === "how-it-works"} onClick={() => { setTab("how-it-works"); setMobileNavOpen(false); }} className="ml-5 w-[calc(100%-1.25rem)]" />
+        <SidebarLink active={tab === "clients"} icon={<Building2 className="w-4 h-4" />} label="My Contacts" onClick={() => { setTab("clients"); setMobileNavOpen(false); }} />
+        <SidebarLink active={tab === "campaigns"} icon={<Mail className="w-4 h-4" />} label="Campaigns" onClick={() => { setTab("campaigns"); setMobileNavOpen(false); }} />
       </nav>
 
       <div className="p-3 border-t border-border space-y-1">
@@ -325,6 +330,8 @@ export default function SalesDashboard() {
                 <PillTab value="pipeline" current={tab}>Pipeline</PillTab>
                 <PillTab value="followups" current={tab} count={dueFollowUps.length} accent>Follow-ups</PillTab>
                 <PillTab value="how-it-works" current={tab}>How It Works</PillTab>
+                <PillTab value="clients" current={tab}>My Contacts</PillTab>
+                <PillTab value="campaigns" current={tab}>Campaigns</PillTab>
                 <PillTab value="queue" current={tab} count={queuedLeads.length}>Queue</PillTab>
                 <PillTab value="all" current={tab} count={leads.length}>All Leads</PillTab>
                 <PillTab value="activity" current={tab}>Activity</PillTab>
@@ -410,6 +417,12 @@ export default function SalesDashboard() {
             </TabsContent>
             <TabsContent value="how-it-works" className="mt-4">
               <HowItWorksPanel />
+            </TabsContent>
+            <TabsContent value="clients" className="mt-4">
+              <ClientsPanel />
+            </TabsContent>
+            <TabsContent value="campaigns" className="mt-4">
+              <CampaignsPanel />
             </TabsContent>
             <TabsContent value="queue" className="mt-4">
               <LeadTable leads={queuedLeads} loading={loading} emptyText="Nothing queued. Move leads to Queue from the pipeline." onOpen={setOpenLead} showColumn="queued" />
