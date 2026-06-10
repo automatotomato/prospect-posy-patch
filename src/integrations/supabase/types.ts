@@ -154,6 +154,185 @@ export type Database = {
           },
         ]
       }
+      campaign_recipients: {
+        Row: {
+          campaign_id: string
+          client_id: string
+          created_at: string
+          current_step: number
+          id: string
+          last_sent_at: string | null
+          next_send_at: string | null
+          status: Database["public"]["Enums"]["campaign_recipient_status"]
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          client_id: string
+          created_at?: string
+          current_step?: number
+          id?: string
+          last_sent_at?: string | null
+          next_send_at?: string | null
+          status?: Database["public"]["Enums"]["campaign_recipient_status"]
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          client_id?: string
+          created_at?: string
+          current_step?: number
+          id?: string
+          last_sent_at?: string | null
+          next_send_at?: string | null
+          status?: Database["public"]["Enums"]["campaign_recipient_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_recipients_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_recipients_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_steps: {
+        Row: {
+          body: string
+          campaign_id: string
+          created_at: string
+          delay_days: number
+          id: string
+          step_order: number
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          campaign_id: string
+          created_at?: string
+          delay_days?: number
+          id?: string
+          step_order: number
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          campaign_id?: string
+          created_at?: string
+          delay_days?: number
+          id?: string
+          step_order?: number
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_steps_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaigns: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          started_at: string | null
+          status: Database["public"]["Enums"]["campaign_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["campaign_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["campaign_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      clients: {
+        Row: {
+          business_name: string
+          contact_name: string | null
+          created_at: string
+          created_by: string | null
+          do_not_contact: boolean
+          email: string | null
+          id: string
+          industry: string | null
+          location: string | null
+          notes: string | null
+          phone: string | null
+          tags: string[] | null
+          unsubscribed: boolean
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          business_name: string
+          contact_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          do_not_contact?: boolean
+          email?: string | null
+          id?: string
+          industry?: string | null
+          location?: string | null
+          notes?: string | null
+          phone?: string | null
+          tags?: string[] | null
+          unsubscribed?: boolean
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          business_name?: string
+          contact_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          do_not_contact?: boolean
+          email?: string | null
+          id?: string
+          industry?: string | null
+          location?: string | null
+          notes?: string | null
+          phone?: string | null
+          tags?: string[] | null
+          unsubscribed?: boolean
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
       conversions: {
         Row: {
           created_at: string
@@ -1087,6 +1266,13 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "agent" | "va" | "sales_rep"
+      campaign_recipient_status:
+        | "pending"
+        | "in_progress"
+        | "completed"
+        | "unsubscribed"
+        | "failed"
+      campaign_status: "draft" | "active" | "paused" | "completed"
       lead_source:
         | "field_photo"
         | "email"
@@ -1231,6 +1417,14 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "agent", "va", "sales_rep"],
+      campaign_recipient_status: [
+        "pending",
+        "in_progress",
+        "completed",
+        "unsubscribed",
+        "failed",
+      ],
+      campaign_status: ["draft", "active", "paused", "completed"],
       lead_source: [
         "field_photo",
         "email",
