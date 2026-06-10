@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { ZC_PROFILE } from "../_shared/zc-profile.ts";
 
 const EXCLUDED = [
   "health", "hospital", "clinic", "dental", "medical", "pharma", "pharmacy",
@@ -187,8 +188,8 @@ Deno.serve(async (req) => {
       try {
         const ai = await openaiJson(
           openaiKey,
-          "You are a B2B SDR. Output strict JSON. Focus on SMBs that likely rely on spreadsheets / manual reporting. Email must be warm, specific, <120 words, soft CTA (reply with interest), no hard sell, no fake claims. Sign as 'Z & C Consultants'.",
-          `Business: ${name}\nWebsite: ${website}\nCity: ${city}\nDomain text (truncated):\n${text.slice(0, 2500)}\n\nReturn JSON: { "summary": "1 sentence what they do", "pain_hypothesis": "1 sentence specific reporting/spreadsheet pain they likely face", "email_subject": "short subject line", "email_body": "personalized email body, plain text, includes their name, mentions hypothesis, ends with soft question" }`
+          `You are a B2B SDR for Z & C Consultants. Output strict JSON. Use ONLY the profile below as ground truth — never invent capabilities.\n\n${ZC_PROFILE}`,
+          `Business: ${name}\nWebsite: ${website}\nCity: ${city}\nDomain text (truncated):\n${text.slice(0, 2500)}\n\nPick the ONE Z&C capability most relevant to this vertical (Power BI dashboards, MRP/BOM, RPA, forecasting, AR/AP, RAG knowledge agent, ERP integration, etc.) and tie it to a believable spreadsheet/manual-reporting pain.\n\nReturn JSON: { "summary": "1 sentence what they do", "pain_hypothesis": "1 sentence specific reporting/spreadsheet pain they likely face", "email_subject": "short subject (<55 chars)", "email_body": "personalized email, <110 words, plain text, opens with something specific, ties ONE Z&C capability to the pain, ends with a single open question, signs off exactly:\\n— Z & C Consultants\\n+1 (214) 997-4331" }`
         );
         summary = String(ai.summary || "").slice(0, 500);
         painHypothesis = String(ai.pain_hypothesis || "").slice(0, 500);
