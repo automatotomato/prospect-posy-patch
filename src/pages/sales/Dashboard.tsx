@@ -464,10 +464,10 @@ export default function SalesDashboard() {
               <CampaignsPanel />
             </TabsContent>
             <TabsContent value="queue" className="mt-4">
-              <LeadTable leads={queuedLeads} loading={loading} emptyText="Nothing queued. Move leads to Queue from the pipeline." onOpen={setOpenLead} showColumn="queued" />
+              <LeadTable leads={queuedLeads} loading={loading} emptyText="Nothing queued. Move leads to Queue from the pipeline." onOpen={setOpenLead} showColumn="queued" selected={selected} onToggle={toggleOne} />
             </TabsContent>
             <TabsContent value="all" className="mt-4">
-              <LeadTable leads={filteredLeads} loading={loading} emptyText="No leads yet." onOpen={setOpenLead} showColumn="updated" />
+              <LeadTable leads={filteredLeads} loading={loading} emptyText="No leads yet." onOpen={setOpenLead} showColumn="updated" selected={selected} onToggle={toggleOne} />
             </TabsContent>
             <TabsContent value="activity" className="mt-4">
               <div className="bg-card border border-border rounded-2xl overflow-hidden">
@@ -518,6 +518,30 @@ export default function SalesDashboard() {
       )}
 
       <ScanCardDialog open={scanOpen} onOpenChange={setScanOpen} onCreated={() => load()} />
+
+      {selected.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card border border-border rounded-full shadow-2xl shadow-primary/20 px-4 py-2.5 flex items-center gap-3">
+          <Badge variant="secondary" className="font-semibold">{selected.size} selected</Badge>
+          <button onClick={clearSelection} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+          <div className="h-5 w-px bg-border" />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline" className="h-8">Move stage <MoreVertical className="w-3 h-3 ml-1" /></Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuLabel>Set stage for {selected.size}</DropdownMenuLabel>
+              {STAGES.map((s) => (
+                <DropdownMenuItem key={s.id} onClick={() => bulkSetStage(Array.from(selected), s.id)}>
+                  {s.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button size="sm" variant="destructive" className="h-8 gap-1" onClick={() => bulkDelete(Array.from(selected))}>
+            <Trash2 className="w-3.5 h-3.5" />Delete
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
