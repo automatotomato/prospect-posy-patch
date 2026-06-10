@@ -24,8 +24,9 @@ const QUERIES = [
   "equipment rental", "freight broker",
 ];
 
-const TARGET = 50;
-const MAX_CANDIDATES = 180;
+const TARGET = 15; // per invocation — call multiple times to reach 50/day
+const MAX_CANDIDATES = 60;
+const TIME_BUDGET_MS = 110_000; // stay under 150s edge timeout
 
 function isExcluded(text: string) {
   const t = (text || "").toLowerCase();
@@ -79,19 +80,17 @@ async function openaiJson(apiKey: string, system: string, user: string, useWebSe
   try { return JSON.parse(content); } catch { return {}; }
 }
 
-async function scrapeText(url: string, paths: string[] = ["", "/contact", "/about", "/contact-us"]): Promise<string> {
-  const out: string[] = [];
-  for (const p of paths) {
+async function scrapeText(url: string, paths: string[] = ["", "/contact"]): Promise<string> {
+  const results = await Promise.all(paths.map(async (p) => {
     try {
       const u = url.replace(/\/$/, "") + p;
-      const r = await fetch(u, { headers: { "User-Agent": "Mozilla/5.0 (LeadScout)" }, signal: AbortSignal.timeout(7000) });
-      if (!r.ok) continue;
+      const r = await fetch(u, { headers: { "User-Agent": "Mozilla/5.0 (LeadScout)" }, signal: AbortSignal.timeout(4000) });
+      if (!r.ok) return "";
       const html = await r.text();
-      out.push(html.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<style[\s\S]*?<\/style>/gi, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 8000));
-      if (out.join(" ").length > 20000) break;
-    } catch { /* ignore */ }
-  }
-  return out.join("\n");
+      return html.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<style[\s\S]*?<\/style>/gi, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 6000);
+    } catch { return ""; }
+  }));
+  return results.join("\n");
 }
 
 function extractEmailsFromText(text: string, domain: string | null): string[] {
@@ -166,10 +165,70 @@ Deno.serve(async (req) => {
     const queryPool = shuffled(QUERIES);
     const cityPool = shuffled(cities);
 
+    const startTs = Date.now();
+    const timeUp = () => Date.now() - startTs > TIME_BUDGET_MS;
+
+    async function processPlace(p: any, q: string, city: string) {
+      const name: string = p.displayName?.text || "";
+      const types = (p.types || []).join(" ");
+      if (!name || isExcluded(name) || isExcluded(types) || isExcluded(q)) return null;
+      const website: string | null = p.websiteUri || null;
+      if (!website) return null;
+      const domain = domainFromUrl(website);
+      if (!domain || seenDomains.has(domain)) return null;
+      seenDomains.add(domain); // reserve early to prevent duplicate parallel work
+
+      const text = await scrapeText(website);
+      const emails = extractEmailsFromText(text, domain);
+      const email = pickBestEmail(emails);
+      if (!email) return null;
+
+      let summary = "", painHypothesis = "", emailSubject = "", emailBody = "";
+      try {
+        const ai = await openaiJson(
+          openaiKey,
+          "You are a B2B SDR. Output strict JSON. Focus on SMBs that likely rely on spreadsheets / manual reporting. Email must be warm, specific, <120 words, soft CTA (reply with interest), no hard sell, no fake claims. Sign as 'Z & C Consultants'.",
+          `Business: ${name}\nWebsite: ${website}\nCity: ${city}\nDomain text (truncated):\n${text.slice(0, 2500)}\n\nReturn JSON: { "summary": "1 sentence what they do", "pain_hypothesis": "1 sentence specific reporting/spreadsheet pain they likely face", "email_subject": "short subject line", "email_body": "personalized email body, plain text, includes their name, mentions hypothesis, ends with soft question" }`
+        );
+        summary = String(ai.summary || "").slice(0, 500);
+        painHypothesis = String(ai.pain_hypothesis || "").slice(0, 500);
+        emailSubject = String(ai.email_subject || "").slice(0, 200);
+        emailBody = String(ai.email_body || "").slice(0, 4000);
+      } catch (e) {
+        console.error("AI fail", String(e));
+        return null;
+      }
+      if (!emailSubject || !emailBody) return null;
+
+      const addrParts = (p.formattedAddress || "").split(",").map((s: string) => s.trim());
+      const cityPart = addrParts[addrParts.length - 3] || city.split(",")[0];
+
+      const { data, error } = await admin.from("sales_leads").insert({
+        owner_id: userId,
+        business_name: name,
+        website,
+        email,
+        phone: p.nationalPhoneNumber || null,
+        city: cityPart,
+        state,
+        industry: q,
+        source: "ai_scout",
+        status: "drafted",
+        stage: "new",
+        notes: [summary, painHypothesis].filter(Boolean).join(" • "),
+        email_subject: emailSubject,
+        email_body: emailBody,
+        email_generated_at: new Date().toISOString(),
+      }).select().single();
+
+      if (error) { console.error("insert error", error); return null; }
+      return data;
+    }
+
     outer:
     for (const city of cityPool) {
       for (const q of queryPool) {
-        if (inserted.length >= TARGET || candidatesProcessed >= MAX_CANDIDATES) break outer;
+        if (inserted.length >= TARGET || candidatesProcessed >= MAX_CANDIDATES || timeUp()) break outer;
 
         const placesRes = await fetch("https://places.googleapis.com/v1/places:searchText", {
           method: "POST",
@@ -178,7 +237,7 @@ Deno.serve(async (req) => {
             "X-Goog-Api-Key": googleKey,
             "X-Goog-FieldMask": "places.displayName,places.formattedAddress,places.websiteUri,places.nationalPhoneNumber,places.types,places.id",
           },
-          body: JSON.stringify({ textQuery: `${q} in ${city}`, pageSize: 15 }),
+          body: JSON.stringify({ textQuery: `${q} in ${city}`, pageSize: 10 }),
         });
         if (!placesRes.ok) {
           const errTxt = await placesRes.text();
@@ -191,71 +250,13 @@ Deno.serve(async (req) => {
         }
         const placesJson = await placesRes.json();
         const places = (placesJson.places || []) as any[];
+        candidatesProcessed += places.length;
 
-        for (const p of places) {
-          if (inserted.length >= TARGET || candidatesProcessed >= MAX_CANDIDATES) break outer;
-          candidatesProcessed++;
-
-          const name: string = p.displayName?.text || "";
-          const types = (p.types || []).join(" ");
-          if (!name || isExcluded(name) || isExcluded(types) || isExcluded(q)) continue;
-          const website: string | null = p.websiteUri || null;
-          if (!website) continue; // need a site to find email
-          const domain = domainFromUrl(website);
-          if (!domain || seenDomains.has(domain)) continue;
-
-          // Scrape site for emails
-          const text = await scrapeText(website);
-          const emails = extractEmailsFromText(text, domain);
-          const email = pickBestEmail(emails);
-          if (!email) continue;
-
-          // AI: summarize business + spreadsheet/reporting pain hypothesis + draft email
-          let summary = "";
-          let painHypothesis = "";
-          let emailSubject = "";
-          let emailBody = "";
-          try {
-            const ai = await openaiJson(
-              openaiKey,
-              "You are a B2B SDR. Output strict JSON. Focus on SMBs that likely rely on spreadsheets / manual reporting. Email must be warm, specific, <120 words, soft CTA (reply with interest), no hard sell, no fake claims. Sign as 'Z & C Consultants'.",
-              `Business: ${name}\nWebsite: ${website}\nCity: ${city}\nDomain text (truncated):\n${text.slice(0, 3500)}\n\nReturn JSON: { "summary": "1 sentence what they do", "pain_hypothesis": "1 sentence specific reporting/spreadsheet pain they likely face", "email_subject": "short subject line", "email_body": "personalized email body, plain text, includes their name, mentions hypothesis, ends with soft question" }`
-            );
-            summary = String(ai.summary || "").slice(0, 500);
-            painHypothesis = String(ai.pain_hypothesis || "").slice(0, 500);
-            emailSubject = String(ai.email_subject || "").slice(0, 200);
-            emailBody = String(ai.email_body || "").slice(0, 4000);
-          } catch (e) {
-            console.error("AI fail", String(e));
-            continue;
-          }
-          if (!emailSubject || !emailBody) continue;
-
-          const addrParts = (p.formattedAddress || "").split(",").map((s: string) => s.trim());
-          const cityPart = addrParts[addrParts.length - 3] || city.split(",")[0];
-
-          const { data, error } = await admin.from("sales_leads").insert({
-            owner_id: userId,
-            business_name: name,
-            website,
-            email,
-            phone: p.nationalPhoneNumber || null,
-            city: cityPart,
-            state,
-            industry: q,
-            source: "ai_scout",
-            status: "drafted",
-            stage: "new",
-            notes: [summary, painHypothesis].filter(Boolean).join(" • "),
-            email_subject: emailSubject,
-            email_body: emailBody,
-            email_generated_at: new Date().toISOString(),
-          }).select().single();
-
-          if (!error && data) {
-            inserted.push(data);
-            seenDomains.add(domain);
-          }
+        // Process this batch of places in parallel
+        const results = await Promise.all(places.map((p) => processPlace(p, q, city).catch(() => null)));
+        for (const r of results) {
+          if (r) inserted.push(r);
+          if (inserted.length >= TARGET) break;
         }
       }
     }
