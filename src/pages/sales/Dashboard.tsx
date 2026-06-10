@@ -12,11 +12,12 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   LogOut, Sparkles, Copy, Check, RefreshCw, Search, Trash2,
   ListChecks, Clock, Users, Send, MoreVertical, ChevronRight, Activity as ActivityIcon, TrendingUp,
   LayoutDashboard, Kanban, Settings as SettingsIcon, Bell, Building2, MapPin, HelpCircle, Menu,
-  Mail, Camera,
+  Mail, Camera, X,
 } from "lucide-react";
 import { useSalesLeads, STAGES, type Lead } from "@/hooks/useSalesLeads";
 import { FollowUpSequencePanel } from "@/components/sales/FollowUpSequencePanel";
@@ -83,8 +84,33 @@ function activityLabel(a: { type: string; note: string | null }) {
 export default function SalesDashboard() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const { leads, activities, loading, load, logActivity, setStage, scheduleFollowUp, removeLead, stats } =
+  const { leads, setLeads, activities, loading, load, logActivity, setStage, scheduleFollowUp, removeLead, stats } =
     useSalesLeads(user?.id);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const toggleOne = (id: string) => setSelected((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const clearSelection = () => setSelected(new Set());
+
+  const bulkDelete = async (ids: string[]) => {
+    if (!ids.length) return;
+    if (!confirm(`Delete ${ids.length} lead${ids.length > 1 ? "s" : ""}? This cannot be undone.`)) return;
+    const { error } = await supabase.from("sales_leads").delete().in("id", ids);
+    if (error) return toast.error(error.message);
+    setLeads((p) => p.filter((l) => !ids.includes(l.id)));
+    clearSelection();
+    toast.success(`Deleted ${ids.length} leads`);
+  };
+
+  const bulkSetStage = async (ids: string[], stage: string) => {
+    if (!ids.length) return;
+    const patch: any = { stage, last_activity_at: new Date().toISOString() };
+    if (stage === "queued") patch.queued_at = new Date().toISOString();
+    const { data, error } = await supabase.from("sales_leads").update(patch).in("id", ids).select();
+    if (error) return toast.error(error.message);
+    const map = new Map((data as Lead[]).map((d) => [d.id, d]));
+    setLeads((p) => p.map((l) => map.get(l.id) || l));
+    clearSelection();
+    toast.success(`Moved ${ids.length} leads to ${STAGES.find((s) => s.id === stage)?.label || stage}`);
+  };
 
   const [discovering, setDiscovering] = useState(false);
   const [lastScout, setLastScout] = useState<{ state: string; inserted: number } | null>(null);
@@ -438,10 +464,10 @@ export default function SalesDashboard() {
               <CampaignsPanel />
             </TabsContent>
             <TabsContent value="queue" className="mt-4">
-              <LeadTable leads={queuedLeads} loading={loading} emptyText="Nothing queued. Move leads to Queue from the pipeline." onOpen={setOpenLead} showColumn="queued" />
+              <LeadTable leads={queuedLeads} loading={loading} emptyText="Nothing queued. Move leads to Queue from the pipeline." onOpen={setOpenLead} showColumn="queued" selected={selected} onToggle={toggleOne} />
             </TabsContent>
             <TabsContent value="all" className="mt-4">
-              <LeadTable leads={filteredLeads} loading={loading} emptyText="No leads yet." onOpen={setOpenLead} showColumn="updated" />
+              <LeadTable leads={filteredLeads} loading={loading} emptyText="No leads yet." onOpen={setOpenLead} showColumn="updated" selected={selected} onToggle={toggleOne} />
             </TabsContent>
             <TabsContent value="activity" className="mt-4">
               <div className="bg-card border border-border rounded-2xl overflow-hidden">
@@ -492,6 +518,30 @@ export default function SalesDashboard() {
       )}
 
       <ScanCardDialog open={scanOpen} onOpenChange={setScanOpen} onCreated={() => load()} />
+
+      {selected.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card border border-border rounded-full shadow-2xl shadow-primary/20 px-4 py-2.5 flex items-center gap-3">
+          <Badge variant="secondary" className="font-semibold">{selected.size} selected</Badge>
+          <button onClick={clearSelection} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+          <div className="h-5 w-px bg-border" />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline" className="h-8">Move stage <MoreVertical className="w-3 h-3 ml-1" /></Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuLabel>Set stage for {selected.size}</DropdownMenuLabel>
+              {STAGES.map((s) => (
+                <DropdownMenuItem key={s.id} onClick={() => bulkSetStage(Array.from(selected), s.id)}>
+                  {s.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button size="sm" variant="destructive" className="h-8 gap-1" onClick={() => bulkDelete(Array.from(selected))}>
+            <Trash2 className="w-3.5 h-3.5" />Delete
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -610,10 +660,11 @@ function KanbanLeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) 
 }
 
 function LeadTable({
-  leads, loading, emptyText, onOpen, showColumn,
+  leads, loading, emptyText, onOpen, showColumn, selected, onToggle,
 }: {
   leads: Lead[]; loading: boolean; emptyText: string; onOpen: (l: Lead) => void;
   showColumn: "follow_up" | "queued" | "updated";
+  selected?: Set<string>; onToggle?: (id: string) => void;
 }) {
   if (loading) return <p className="text-sm text-muted-foreground p-6">Loading…</p>;
   if (leads.length === 0)
@@ -621,31 +672,43 @@ function LeadTable({
   return (
     <div className="bg-card border border-border rounded-2xl overflow-hidden">
       <div className="divide-y divide-border">
-        {leads.map((l) => (
-          <button
-            key={l.id}
-            onClick={() => onOpen(l)}
-            className="w-full text-left px-5 py-3 hover:bg-muted/30 flex items-center gap-4 transition-colors"
-          >
-            <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center shrink-0 text-primary">
-              <Building2 className="w-4 h-4" />
+        {leads.map((l) => {
+          const isSelected = selected?.has(l.id);
+          return (
+            <div
+              key={l.id}
+              className={`w-full px-5 py-3 hover:bg-muted/30 flex items-center gap-4 transition-colors ${isSelected ? "bg-primary/5" : ""}`}
+            >
+              {onToggle && (
+                <Checkbox
+                  checked={!!isSelected}
+                  onCheckedChange={() => onToggle(l.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label="Select lead"
+                />
+              )}
+              <button onClick={() => onOpen(l)} className="flex items-center gap-4 text-left flex-1 min-w-0">
+                <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center shrink-0 text-primary">
+                  <Building2 className="w-4 h-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium truncate">{l.business_name}</div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {[l.industry, l.city, l.state].filter(Boolean).join(" · ") || "—"}
+                    {l.phone && <> · {l.phone}</>}
+                  </div>
+                </div>
+                <div className="text-xs text-muted-foreground hidden sm:block w-28 text-right">
+                  {showColumn === "follow_up" && <>Follow-up {fmtDate(l.follow_up_at)}</>}
+                  {showColumn === "queued" && <>Queued {fmtDate(l.queued_at)}</>}
+                  {showColumn === "updated" && <>{fmtDate(l.last_activity_at || l.created_at)}</>}
+                </div>
+                <StageBadge stage={l.stage} />
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </button>
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="font-medium truncate">{l.business_name}</div>
-              <div className="text-xs text-muted-foreground truncate">
-                {[l.industry, l.city, l.state].filter(Boolean).join(" · ") || "—"}
-                {l.phone && <> · {l.phone}</>}
-              </div>
-            </div>
-            <div className="text-xs text-muted-foreground hidden sm:block w-28 text-right">
-              {showColumn === "follow_up" && <>Follow-up {fmtDate(l.follow_up_at)}</>}
-              {showColumn === "queued" && <>Queued {fmtDate(l.queued_at)}</>}
-              {showColumn === "updated" && <>{fmtDate(l.last_activity_at || l.created_at)}</>}
-            </div>
-            <StageBadge stage={l.stage} />
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-          </button>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

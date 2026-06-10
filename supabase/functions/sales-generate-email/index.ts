@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { ZC_PROFILE } from "../_shared/zc-profile.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -45,24 +46,25 @@ Deno.serve(async (req) => {
       });
     }
 
-    const systemPrompt = `You are an SDR for Z-C Consultants, helping spreadsheet-heavy operations (manufacturing, warehousing, logistics, transportation, inventory, distribution) replace messy Excel work with simple automation. Write SHORT, warm, human cold outreach emails that focus on building a connection — NOT pitching. Reference something specific about the prospect's business. End with a soft, low-friction question (no hard CTA, no demo ask, no calendar link). Maximum 90 words. No emojis. No marketing fluff. Tone: curious peer, not salesperson.`;
+    const systemPrompt = `You are an SDR for Z & C Consultants. Use ONLY the company profile below as ground truth — never invent capabilities outside it.\n\n${ZC_PROFILE}`;
 
-    const userPrompt = `Write an outreach email for this business:
+    const userPrompt = `Write a personalized outreach email for this business:
 
 Business: ${lead.business_name}
 Industry: ${lead.industry || "unknown"}
 City: ${lead.city || "unknown"}, ${lead.state || ""}
 Website: ${lead.website || "n/a"}
+${lead.notes ? `Context notes: ${lead.notes}` : ""}
+
+Pick the ONE Z&C capability most relevant to this vertical (e.g. Power BI dashboards, MRP/BOM, RPA, forecasting, RAG knowledge agent, ERP integration) and tie it to a believable spreadsheet/manual-reporting pain they likely face.
 
 Return strict JSON only:
 {"subject": "...", "body": "..."}
 
-Rules:
-- Subject under 50 chars, casual, no clickbait.
-- Body opens with their name/something specific, NOT "I hope this finds you well".
-- Mention spreadsheets/manual data work briefly as a curiosity hook, not a pitch.
-- Sign off simply: "— Z-C Consultants".
-- End with a single open question (e.g., "Curious — how are you handling X today?").`;
+- Subject < 55 chars, casual, no clickbait.
+- Body < 110 words, plain text, opens with something specific (city / niche / name), not "I hope this finds you well".
+- End with a single open question.
+- Sign off exactly:\n— Z & C Consultants\n+1 (214) 997-4331`;
 
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
