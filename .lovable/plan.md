@@ -1,67 +1,67 @@
 ## Goal
 
-A clean, separate dashboard at `/sales` for outbound sales: log in, discover new business leads in target verticals, and generate a short personalized outreach email for each one. No email is actually sent — drafts only, copy-to-clipboard.
+Wipe the existing sales pipeline, then run an OpenAI-powered agent that scouts real SMB leads across **Nevada, California, and Texas** — broadened to any SMB with spreadsheet/reporting pain — and drafts a personalized email for each one. Every lead must have a verified email address; no email = not saved. Resend is **not** wired up yet; emails stay as drafts.
 
-## 1. Auth — password login for management@z-cconsultants.com
+## 1. Clean slate
 
-- Enable email+password sign-in on the backend (the existing 8-digit OTP flow stays for other users).
-- Create a new `/sales/login` page with email + password fields (separate from the existing OTP login so we don't disturb the current CRM users).
-- Seed the user:
-  - Add `management@z-cconsultants.com` to `allowed_users` as `admin` so the existing `handle_new_user` trigger provisions their role and team membership automatically.
-  - Create the auth user with a password via a one-time admin migration/insert. You'll be prompted to enter the password securely — it is never stored in code or chat.
-- After login, redirect to `/sales`.
+- Delete every row in `sales_leads`. Pipeline starts empty.
 
-## 2. Sales dashboard `/sales`
+## 2. New scouting agent (edge function `sales-scout-leads`)
 
-Single-page layout:
+Replaces `sales-discover-leads`. Per run it produces up to **50** new leads with a valid email.
+
+Flow per run:
 
 ```text
-┌──────────────────────────────────────────────────┐
-│  Outbound Sales                    [user] [out] │
-├──────────────────────────────────────────────────┤
-│  [Discover new leads]   vertical: [dropdown]    │
-│  city: [input]   count: [10 ▼]                  │
-├──────────────────────────────────────────────────┤
-│  Leads (table)                                   │
-│   Name · Industry · City · Email · Status · ▸   │
-│   ─────────────────────────────────────────────  │
-│   row → expands to show generated email draft    │
-│         [Regenerate] [Copy email] [Mark sent]    │
-└──────────────────────────────────────────────────┘
+  ┌─ pick state (NV / CA / TX, round-robin per run)
+  │
+  ├─ Google Places: SMBs in major metros (Vegas/Reno, LA/SF/SD/Sac, Houston/Dallas/Austin/SA)
+  │  broad query set: "small business", "professional services", "operations",
+  │  "logistics", "wholesale", "field services", "agency", "manufacturing"...
+  │
+  ├─ for each candidate:
+  │    1. dedupe by domain + business_name (owner-scoped)
+  │    2. OpenAI web-search tool finds a real contact email on the company
+  │       site / public sources (decision-maker > generic). Drop if none.
+  │    3. OpenAI summarizes what the business does + a spreadsheet/reporting
+  │       pain hypothesis (1–2 sentences, used to personalize email).
+  │    4. OpenAI drafts personalized email (subject + body, <120 words,
+  │       warm, references the business, soft CTA).
+  │    5. insert into sales_leads with status='drafted', source='ai_scout'
+  │
+  └─ stop when 50 inserted OR candidate pool exhausted; log run
 ```
 
-- **Discover**: calls a new edge function `sales-discover-leads` that uses Google Places + Perplexity to find businesses in the chosen vertical/city and stores them in a new `sales_leads` table. Default verticals: manufacturing, warehousing, logistics, transportation, inventory management, distribution, 3PL, freight, wholesale, field services — anything spreadsheet-heavy. **Hard exclusion list**: healthcare, hospitals, clinics, dental, medical, pharma, health insurance, any insurance (life/auto/home/P&C).
-- **Generate email**: edge function `sales-generate-email` uses Lovable AI Gateway to draft a short (≤90 words) personalized outreach email focused on building a connection, not pitching. Tone: warm, curious, references something specific about the business. Ends with a light question, no hard CTA. No sending — just stores the draft on the lead row.
-- **Mark sent**: manual status toggle (since email isn't wired).
+Guarantees:
+- Lead is only saved if a valid-format, non-disposable email was found.
+- Hard exclusion list (healthcare/insurance/etc.) still enforced.
+- State rotation tracked in `agent_settings` so consecutive runs hit different states.
 
-## 3. Data
+## 3. UI changes on `/sales`
 
-New table `sales_leads` (separate from the existing `prospects` table so the two systems don't collide):
+- Dashboard "Discover" panel becomes **"Scout 50 leads"** — single button, no vertical/city inputs (agent picks). Shows last run state + count.
+- Lead row still shows the AI-drafted subject/body with **Regenerate**, **Copy**, **Mark sent**. No send button.
+- Manual run only — no cron yet (per your choice).
 
-- business_name, website, email, phone, city, state, industry, source
-- notes (what the discovery agent learned)
-- email_subject, email_body, email_generated_at
-- status: `new` | `drafted` | `sent` | `skipped`
-- owner_id (auth user)
-- created_at, updated_at
+## 4. Data
 
-RLS: only the owner (or admin) can read/write their own leads.
+`sales_leads` keeps its current shape. New `source` value: `ai_scout`. Add a small `agent_settings` row `scout_state_cursor` to remember which state was last used.
 
-## 4. Exclusions / safety
+## 5. Secrets / services
 
-- Discovery prompt and a post-filter both reject any lead whose industry/name matches the healthcare or insurance blocklist.
-- Existing DNC table is respected if an email matches.
+- Uses existing `OPENAI_API_KEY` and `GOOGLE_PLACES_API_KEY`. No new secrets.
+- Resend stays disconnected — explicitly out of scope.
 
-## 5. Out of scope (per your request)
+## 6. Out of scope
 
-- Actually sending email (no Resend wiring on this dashboard).
-- Touching the existing Automate Planet CRM, queues, drip system, or analytics.
-- The earlier secret/connector linking tasks — those remain pending and can be done separately when you're ready.
+- Sending email (no Resend wiring).
+- Automated daily cron (manual button only for now; easy to add later).
+- Touching the Automate Planet CRM / drip system.
 
 ## Technical notes
 
-- Routes: `/sales/login`, `/sales` (protected).
-- New files: `src/pages/sales/Login.tsx`, `src/pages/sales/Dashboard.tsx`, `src/hooks/useSalesLeads.ts`, edge functions `sales-discover-leads`, `sales-generate-email`.
-- Reuses existing `GOOGLE_PLACES_API_KEY`, `LOVABLE_API_KEY`. No new secrets required for this step.
-- Password auth enabled via `configure_auth`; OTP flow untouched.
-- You'll be asked to enter the initial password through Lovable's secure secret input so it never appears in chat or code.
+- New edge function: `supabase/functions/sales-scout-leads/index.ts` (Deno, verify_jwt default, CORS).
+- Uses OpenAI `gpt-4o-mini` with the `web_search` tool for email discovery + summary; same model for email drafting.
+- Deletes `sales-discover-leads` references from the dashboard (function file can stay for now or be removed).
+- Frontend: update `src/pages/sales/Dashboard.tsx` discover panel + hook call in `src/hooks/useSalesLeads.ts`.
+- Migration: `DELETE FROM sales_leads;` + upsert `agent_settings` row for state cursor.
