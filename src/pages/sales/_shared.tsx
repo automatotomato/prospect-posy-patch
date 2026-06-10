@@ -50,7 +50,7 @@ export type SalesCtx = {
 
   // scout
   discovering: boolean;
-  discover: () => Promise<void>;
+  discover: () => Promise<any>;
   lastScout: { state: string; inserted: number } | null;
 
   // scan
