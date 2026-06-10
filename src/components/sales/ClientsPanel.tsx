@@ -245,7 +245,7 @@ function UploadCsvDialog({ open, onOpenChange, onDone }: {
 
   return (
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) reset(); }}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Upload contacts (CSV)</DialogTitle>
           <DialogDescription>
@@ -280,26 +280,56 @@ function UploadCsvDialog({ open, onOpenChange, onDone }: {
 
           {preview.length > 0 && (
             <div className="border border-border rounded-lg overflow-hidden">
-              <div className="px-3 py-2 bg-muted/40 text-[10px] uppercase tracking-wider font-semibold">
-                Preview (first 5 rows)
+              <div className="px-3 py-2 bg-muted/40 flex items-center justify-between gap-2 border-b border-border">
+                <span className="text-[10px] uppercase tracking-wider font-semibold">
+                  Preview — first {preview.length} of {parseCSV(csvText).rows.length} rows
+                </span>
+                <div className="flex flex-wrap gap-1 justify-end">
+                  {headers.map((h) => (
+                    <span
+                      key={h}
+                      className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
+                        KNOWN_HEADERS.includes(h)
+                          ? "bg-primary/10 text-primary border border-primary/20"
+                          : "bg-muted text-muted-foreground border border-border line-through"
+                      }`}
+                      title={KNOWN_HEADERS.includes(h) ? "Will be imported" : "Ignored — not a known field"}
+                    >
+                      {h}
+                    </span>
+                  ))}
+                </div>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead className="bg-muted/20">
+              <div className="max-h-72 overflow-auto">
+                <table className="w-full text-xs border-collapse">
+                  <thead className="bg-muted/30 sticky top-0">
                     <tr>
                       {headers.map((h) => (
-                        <th key={h} className={`text-left px-2 py-1.5 font-medium ${KNOWN_HEADERS.includes(h) ? "text-foreground" : "text-muted-foreground"}`}>
+                        <th
+                          key={h}
+                          className={`text-left px-3 py-2 font-semibold whitespace-nowrap border-b border-border ${
+                            KNOWN_HEADERS.includes(h) ? "text-foreground" : "text-muted-foreground/60"
+                          }`}
+                        >
                           {h}
-                          {!KNOWN_HEADERS.includes(h) && <span className="ml-1 text-[9px] text-muted-foreground">(ignored)</span>}
                         </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {preview.map((row, i) => (
-                      <tr key={i} className="border-t border-border">
+                      <tr key={i} className="border-b border-border last:border-b-0 hover:bg-muted/20">
                         {headers.map((h) => (
-                          <td key={h} className="px-2 py-1.5 truncate max-w-[160px]">{row[h]}</td>
+                          <td
+                            key={h}
+                            className={`px-3 py-1.5 align-top ${
+                              KNOWN_HEADERS.includes(h) ? "" : "text-muted-foreground/60"
+                            }`}
+                          >
+                            <div className="max-w-[200px] truncate" title={row[h]}>
+                              {row[h] || <span className="text-muted-foreground/40">—</span>}
+                            </div>
+                          </td>
                         ))}
                       </tr>
                     ))}
@@ -309,6 +339,7 @@ function UploadCsvDialog({ open, onOpenChange, onDone }: {
             </div>
           )}
         </div>
+
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
