@@ -497,6 +497,8 @@ export default function SalesDashboard() {
           onDelete={() => { removeLead(openLead.id); setOpenLead(null); }}
         />
       )}
+
+      <ScanCardDialog open={scanOpen} onOpenChange={setScanOpen} onCreated={() => load()} />
     </div>
   );
 }
