@@ -16,12 +16,13 @@ import {
   LogOut, Sparkles, Copy, Check, RefreshCw, Search, Trash2,
   ListChecks, Clock, Users, Send, MoreVertical, ChevronRight, Activity as ActivityIcon, TrendingUp,
   LayoutDashboard, Kanban, Settings as SettingsIcon, Bell, Building2, MapPin, HelpCircle, Menu,
-  Mail,
+  Mail, Camera,
 } from "lucide-react";
 import { useSalesLeads, STAGES, type Lead } from "@/hooks/useSalesLeads";
 import { FollowUpSequencePanel } from "@/components/sales/FollowUpSequencePanel";
 import { ClientsPanel } from "@/components/sales/ClientsPanel";
 import { CampaignsPanel } from "@/components/sales/CampaignsPanel";
+import { ScanCardDialog } from "@/components/sales/ScanCardDialog";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const VERTICALS = [
@@ -96,6 +97,7 @@ export default function SalesDashboard() {
   const [search, setSearch] = useState("");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [mobilePipelineStage, setMobilePipelineStage] = useState<string | null>("new");
+  const [scanOpen, setScanOpen] = useState(false);
 
   useEffect(() => {
     if (!user) navigate("/sales/login", { replace: true });
@@ -283,6 +285,24 @@ export default function SalesDashboard() {
               progress={Math.min(100, dueFollowUps.length * 12)}
             />
             <KpiTile label="Won" value={stats.by.won || 0} delta="Closed deals" highlight progress={Math.min(100, (stats.by.won || 0) * 10)} />
+          </section>
+
+          {/* ============ SCAN BUSINESS CARD ============ */}
+          <section className="bg-gradient-to-br from-primary/15 via-card to-card border border-primary/30 rounded-2xl p-4 md:p-5 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xl">
+            <div className="flex items-start md:items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-primary/20 text-primary flex items-center justify-center shrink-0">
+                <Camera className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="font-display font-semibold text-sm">Scan a business card</h2>
+                <p className="text-xs text-muted-foreground">
+                  Snap or upload a photo — AI extracts contact details and drops the lead into your pipeline.
+                </p>
+              </div>
+            </div>
+            <Button onClick={() => setScanOpen(true)} className="gap-2 shrink-0">
+              <Camera className="w-4 h-4" />Scan card
+            </Button>
           </section>
 
           {/* ============ DISCOVER ============ */}
@@ -477,6 +497,8 @@ export default function SalesDashboard() {
           onDelete={() => { removeLead(openLead.id); setOpenLead(null); }}
         />
       )}
+
+      <ScanCardDialog open={scanOpen} onOpenChange={setScanOpen} onCreated={() => load()} />
     </div>
   );
 }
