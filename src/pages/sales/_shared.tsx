@@ -36,9 +36,9 @@ export type SalesCtx = {
   // drawer
   openLead: Lead | null;
   setOpenLead: (l: Lead | null) => void;
-  generate: (lead: Lead) => Promise<void>;
+  generate: (lead: Lead) => Promise<any>;
   generatingId: string | null;
-  copy: (lead: Lead) => Promise<void>;
+  copy: (lead: Lead) => Promise<any>;
   copiedId: string | null;
 
   // selection / bulk
