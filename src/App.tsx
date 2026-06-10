@@ -10,7 +10,16 @@ import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import Team from "./pages/Team";
 import SalesLogin from "./pages/sales/Login";
+import SalesLayout from "./pages/sales/SalesLayout";
 import SalesDashboard from "./pages/sales/Dashboard";
+import Pipeline from "./pages/sales/Pipeline";
+import LeadsAll from "./pages/sales/LeadsAll";
+import LeadsQueue from "./pages/sales/LeadsQueue";
+import LeadsContacts from "./pages/sales/LeadsContacts";
+import ActivityPage from "./pages/sales/Activity";
+import Followups from "./pages/sales/Followups";
+import Campaigns from "./pages/sales/Campaigns";
+import HowItWorks from "./pages/sales/HowItWorks";
 import SalesSettings from "./pages/sales/Settings";
 
 const queryClient = new QueryClient();
@@ -25,13 +34,23 @@ const App = () => (
           <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route path="/sales/login" element={<SalesLogin />} />
-            <Route path="/sales" element={<ProtectedRoute><SalesDashboard /></ProtectedRoute>} />
+            <Route path="/sales" element={<ProtectedRoute><SalesLayout /></ProtectedRoute>}>
+              <Route index element={<SalesDashboard />} />
+              <Route path="pipeline" element={<Pipeline />} />
+              <Route path="leads" element={<LeadsAll />} />
+              <Route path="leads/queue" element={<LeadsQueue />} />
+              <Route path="leads/contacts" element={<LeadsContacts />} />
+              <Route path="activity" element={<ActivityPage />} />
+              <Route path="followups" element={<Followups />} />
+              <Route path="campaigns" element={<Campaigns />} />
+              <Route path="how-it-works" element={<HowItWorks />} />
+            </Route>
             <Route path="/sales/settings" element={<ProtectedRoute><SalesSettings /></ProtectedRoute>} />
             <Route path="/team" element={<AdminRoute><Team /></AdminRoute>} />
             {/* Legacy routes — consolidated into the single Sales dashboard */}
             <Route path="/" element={<Navigate to="/sales" replace />} />
             <Route path="/today" element={<Navigate to="/sales" replace />} />
-            <Route path="/pipeline" element={<Navigate to="/sales" replace />} />
+            <Route path="/pipeline" element={<Navigate to="/sales/pipeline" replace />} />
             <Route path="/sms-templates" element={<Navigate to="/sales" replace />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
