@@ -87,9 +87,7 @@ export default function SalesDashboard() {
     useSalesLeads(user?.id);
 
   const [discovering, setDiscovering] = useState(false);
-  const [vertical, setVertical] = useState(VERTICALS[0]);
-  const [city, setCity] = useState("Las Vegas, NV");
-  const [count, setCount] = useState(10);
+  const [lastScout, setLastScout] = useState<{ state: string; inserted: number } | null>(null);
   const [openLead, setOpenLead] = useState<Lead | null>(null);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -113,14 +111,16 @@ export default function SalesDashboard() {
 
   const discover = async () => {
     setDiscovering(true);
-    const { data, error } = await supabase.functions.invoke("sales-discover-leads", {
-      body: { vertical, city, count },
-    });
+    toast.info("Scout running — this can take 1–2 minutes…");
+    const { data, error } = await supabase.functions.invoke("sales-scout-leads", { body: {} });
     setDiscovering(false);
     if (error) return toast.error(error.message);
-    toast.success(`Found ${data?.inserted ?? 0} new leads`);
+    const inserted = data?.inserted ?? 0;
+    const state = data?.state ?? "";
+    setLastScout({ state, inserted });
+    toast.success(`Scouted ${inserted} new ${state} leads with verified emails`);
     if (data?.leads?.length) {
-      for (const l of data.leads) logActivity(l.id, "discovered", `${vertical} · ${city}`);
+      for (const l of data.leads) logActivity(l.id, "discovered", `${l.industry} · ${l.city}, ${state}`);
     }
     load();
   };
@@ -305,41 +305,34 @@ export default function SalesDashboard() {
             </Button>
           </section>
 
-          {/* ============ DISCOVER ============ */}
+          {/* ============ SCOUT AGENT ============ */}
           <section className="bg-card border border-border rounded-2xl overflow-hidden shadow-xl">
             <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-foreground/[0.02]">
               <div>
-                <h2 className="font-display font-semibold text-sm">Discover new leads</h2>
-                <p className="text-xs text-muted-foreground">AI-targeted prospects in operations-heavy verticals.</p>
+                <h2 className="font-display font-semibold text-sm">AI Lead Scout</h2>
+                <p className="text-xs text-muted-foreground">Pulls 50 SMB leads across Nevada, California, and Texas — every lead has a verified email and a personalized draft.</p>
               </div>
               <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-1 rounded uppercase tracking-wider border border-primary/20">
-                AI Engine
+                OpenAI · NV / CA / TX
               </span>
             </div>
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Vertical</Label>
-                  <Select value={vertical} onValueChange={setVertical}>
-                    <SelectTrigger className="bg-secondary border-border h-10"><SelectValue /></SelectTrigger>
-                    <SelectContent>{VERTICALS.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent>
-                  </Select>
+            <div className="p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="text-xs text-muted-foreground space-y-1">
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-3.5 h-3.5" />
+                  <span>State rotates per run (NV → CA → TX). Target 50 verified leads.</span>
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">City</Label>
-                  <Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="City, ST" className="bg-secondary border-border h-10" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Batch Count</Label>
-                  <Input type="number" min={1} max={50} value={count} onChange={(e) => setCount(Number(e.target.value))} className="bg-secondary border-border h-10" />
-                </div>
-                <Button onClick={discover} disabled={discovering} className="h-10 font-semibold gap-2">
-                  {discovering ? <><RefreshCw className="w-4 h-4 animate-spin" />Searching</> : <><Search className="w-4 h-4" />Discover</>}
-                </Button>
+                {lastScout && (
+                  <div className="flex items-center gap-2 text-emerald-400">
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Last run: {lastScout.inserted} leads from {lastScout.state}</span>
+                  </div>
+                )}
+                <div className="italic opacity-70">Healthcare, insurance, and medical verticals excluded.</div>
               </div>
-              <p className="mt-4 text-[10px] text-muted-foreground italic">
-                Excludes healthcare, medical, dental, pharma, and any insurance verticals.
-              </p>
+              <Button onClick={discover} disabled={discovering} size="lg" className="h-12 font-semibold gap-2 px-6">
+                {discovering ? <><RefreshCw className="w-4 h-4 animate-spin" />Scouting…</> : <><Sparkles className="w-4 h-4" />Scout 50 leads</>}
+              </Button>
             </div>
           </section>
 

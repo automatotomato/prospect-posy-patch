@@ -1,0 +1,266 @@
+import { createClient } from "npm:@supabase/supabase-js@2";
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+
+const EXCLUDED = [
+  "health", "hospital", "clinic", "dental", "medical", "pharma", "pharmacy",
+  "insurance", "insurer", "wellness", "chiropract", "physician", "doctor",
+  "veterinary", "nursing", "rehab", "therapy", "cosmetic", "dermatol",
+];
+
+const STATES: Record<string, { cities: string[] }> = {
+  NV: { cities: ["Las Vegas, NV", "Henderson, NV", "Reno, NV", "North Las Vegas, NV", "Sparks, NV"] },
+  CA: { cities: ["Los Angeles, CA", "San Diego, CA", "San Jose, CA", "Sacramento, CA", "Fresno, CA", "Long Beach, CA", "Oakland, CA", "Bakersfield, CA", "Anaheim, CA", "Riverside, CA"] },
+  TX: { cities: ["Houston, TX", "Dallas, TX", "Austin, TX", "San Antonio, TX", "Fort Worth, TX", "El Paso, TX", "Arlington, TX", "Plano, TX", "Corpus Christi, TX", "Lubbock, TX"] },
+};
+const STATE_ORDER = ["NV", "CA", "TX"];
+
+// Broad SMB verticals likely to have spreadsheet/reporting pain
+const QUERIES = [
+  "manufacturing company", "wholesale distributor", "logistics company",
+  "construction company", "property management", "accounting firm",
+  "law firm", "marketing agency", "field service company", "auto repair shop",
+  "commercial cleaning", "HVAC company", "electrician contractor", "landscaping company",
+  "real estate brokerage", "staffing agency", "auto dealership", "printing company",
+  "equipment rental", "freight broker",
+];
+
+const TARGET = 50;
+const MAX_CANDIDATES = 180;
+
+function isExcluded(text: string) {
+  const t = (text || "").toLowerCase();
+  return EXCLUDED.some((kw) => t.includes(kw));
+}
+
+function isValidEmail(email: string): boolean {
+  if (!email) return false;
+  const e = email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(e)) return false;
+  const disposable = ["mailinator", "tempmail", "10minutemail", "guerrillamail", "yopmail", "trashmail"];
+  if (disposable.some((d) => e.includes(d))) return false;
+  // skip obvious noreply
+  if (/(no-?reply|donot-?reply|noreply)/i.test(e)) return false;
+  return true;
+}
+
+function domainFromUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url.startsWith("http") ? url : `https://${url}`);
+    return u.hostname.replace(/^www\./, "").toLowerCase();
+  } catch { return null; }
+}
+
+async function openaiJson(apiKey: string, system: string, user: string, useWebSearch = false): Promise<any> {
+  const body: any = {
+    model: "gpt-4o-mini",
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user },
+    ],
+    response_format: { type: "json_object" },
+  };
+  // gpt-4o-mini supports temperature; keep it low for determinism
+  body.temperature = 0.3;
+  if (useWebSearch) {
+    // Note: web_search tool is enabled on certain OpenAI models; for gpt-4o-mini we rely on prompted heuristics.
+  }
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error(`OpenAI ${res.status}: ${t.slice(0, 200)}`);
+  }
+  const j = await res.json();
+  const content = j.choices?.[0]?.message?.content || "{}";
+  try { return JSON.parse(content); } catch { return {}; }
+}
+
+async function scrapeText(url: string, paths: string[] = ["", "/contact", "/about", "/contact-us"]): Promise<string> {
+  const out: string[] = [];
+  for (const p of paths) {
+    try {
+      const u = url.replace(/\/$/, "") + p;
+      const r = await fetch(u, { headers: { "User-Agent": "Mozilla/5.0 (LeadScout)" }, signal: AbortSignal.timeout(7000) });
+      if (!r.ok) continue;
+      const html = await r.text();
+      out.push(html.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<style[\s\S]*?<\/style>/gi, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 8000));
+      if (out.join(" ").length > 20000) break;
+    } catch { /* ignore */ }
+  }
+  return out.join("\n");
+}
+
+function extractEmailsFromText(text: string, domain: string | null): string[] {
+  const matches = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) || [];
+  const filtered = matches
+    .map((e) => e.toLowerCase())
+    .filter((e) => isValidEmail(e))
+    .filter((e) => !/\.(png|jpg|jpeg|gif|webp|svg)$/i.test(e));
+  // prefer matching domain
+  const unique = Array.from(new Set(filtered));
+  if (domain) {
+    const matchDomain = unique.filter((e) => e.endsWith("@" + domain));
+    if (matchDomain.length) return matchDomain;
+  }
+  return unique;
+}
+
+function pickBestEmail(emails: string[]): string | null {
+  if (!emails.length) return null;
+  const priority = [/^(ceo|founder|owner|president|director|manager)@/, /^(sales|hello|team)@/, /^(info|contact|office|admin)@/];
+  for (const re of priority) {
+    const hit = emails.find((e) => re.test(e));
+    if (hit) return hit;
+  }
+  return emails[0];
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  try {
+    const url = Deno.env.get("SUPABASE_URL")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const googleKey = Deno.env.get("GOOGLE_PLACES_API_KEY");
+    const openaiKey = Deno.env.get("OPENAI_API_KEY");
+
+    if (!googleKey) return new Response(JSON.stringify({ error: "GOOGLE_PLACES_API_KEY not set" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (!openaiKey) return new Response(JSON.stringify({ error: "OPENAI_API_KEY not set" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const userClient = createClient(url, anonKey, { global: { headers: { Authorization: authHeader } } });
+    const { data: userData, error: userErr } = await userClient.auth.getUser();
+    if (userErr || !userData.user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const userId = userData.user.id;
+    const admin = createClient(url, serviceKey);
+
+    // Rotate state cursor
+    const { data: cursorRow } = await admin.from("agent_settings").select("*").eq("setting_key", "scout_state_cursor").maybeSingle();
+    const lastIdx = (cursorRow?.setting_value as any)?.index ?? -1;
+    const nextIdx = (lastIdx + 1) % STATE_ORDER.length;
+    const state = STATE_ORDER[nextIdx];
+    await admin.from("agent_settings").upsert({ setting_key: "scout_state_cursor", setting_value: { index: nextIdx, state } as any }, { onConflict: "setting_key" });
+
+    const cities = STATES[state].cities;
+    const inserted: any[] = [];
+    const seenDomains = new Set<string>();
+    let candidatesProcessed = 0;
+
+    // Pull existing emails/domains to dedupe
+    const { data: existing } = await admin.from("sales_leads").select("email,website").eq("owner_id", userId);
+    (existing || []).forEach((r: any) => {
+      const d = domainFromUrl(r.website);
+      if (d) seenDomains.add(d);
+      if (r.email) seenDomains.add(r.email.toLowerCase().split("@")[1] || "");
+    });
+
+    // Shuffle queries & cities
+    const shuffled = (arr: string[]) => arr.map((v) => [Math.random(), v] as const).sort((a, b) => a[0] - b[0]).map(([, v]) => v);
+    const queryPool = shuffled(QUERIES);
+    const cityPool = shuffled(cities);
+
+    outer:
+    for (const city of cityPool) {
+      for (const q of queryPool) {
+        if (inserted.length >= TARGET || candidatesProcessed >= MAX_CANDIDATES) break outer;
+
+        const placesRes = await fetch("https://places.googleapis.com/v1/places:searchText", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": googleKey,
+            "X-Goog-FieldMask": "places.displayName,places.formattedAddress,places.websiteUri,places.nationalPhoneNumber,places.types,places.id",
+          },
+          body: JSON.stringify({ textQuery: `${q} in ${city}`, pageSize: 15 }),
+        });
+        if (!placesRes.ok) continue;
+        const placesJson = await placesRes.json();
+        const places = (placesJson.places || []) as any[];
+
+        for (const p of places) {
+          if (inserted.length >= TARGET || candidatesProcessed >= MAX_CANDIDATES) break outer;
+          candidatesProcessed++;
+
+          const name: string = p.displayName?.text || "";
+          const types = (p.types || []).join(" ");
+          if (!name || isExcluded(name) || isExcluded(types) || isExcluded(q)) continue;
+          const website: string | null = p.websiteUri || null;
+          if (!website) continue; // need a site to find email
+          const domain = domainFromUrl(website);
+          if (!domain || seenDomains.has(domain)) continue;
+
+          // Scrape site for emails
+          const text = await scrapeText(website);
+          const emails = extractEmailsFromText(text, domain);
+          const email = pickBestEmail(emails);
+          if (!email) continue;
+
+          // AI: summarize business + spreadsheet/reporting pain hypothesis + draft email
+          let summary = "";
+          let painHypothesis = "";
+          let emailSubject = "";
+          let emailBody = "";
+          try {
+            const ai = await openaiJson(
+              openaiKey,
+              "You are a B2B SDR. Output strict JSON. Focus on SMBs that likely rely on spreadsheets / manual reporting. Email must be warm, specific, <120 words, soft CTA (reply with interest), no hard sell, no fake claims. Sign as 'Z & C Consultants'.",
+              `Business: ${name}\nWebsite: ${website}\nCity: ${city}\nDomain text (truncated):\n${text.slice(0, 3500)}\n\nReturn JSON: { "summary": "1 sentence what they do", "pain_hypothesis": "1 sentence specific reporting/spreadsheet pain they likely face", "email_subject": "short subject line", "email_body": "personalized email body, plain text, includes their name, mentions hypothesis, ends with soft question" }`
+            );
+            summary = String(ai.summary || "").slice(0, 500);
+            painHypothesis = String(ai.pain_hypothesis || "").slice(0, 500);
+            emailSubject = String(ai.email_subject || "").slice(0, 200);
+            emailBody = String(ai.email_body || "").slice(0, 4000);
+          } catch (e) {
+            console.error("AI fail", String(e));
+            continue;
+          }
+          if (!emailSubject || !emailBody) continue;
+
+          const addrParts = (p.formattedAddress || "").split(",").map((s: string) => s.trim());
+          const cityPart = addrParts[addrParts.length - 3] || city.split(",")[0];
+
+          const { data, error } = await admin.from("sales_leads").insert({
+            owner_id: userId,
+            business_name: name,
+            website,
+            email,
+            phone: p.nationalPhoneNumber || null,
+            city: cityPart,
+            state,
+            industry: q,
+            source: "ai_scout",
+            status: "drafted",
+            stage: "new",
+            notes: [summary, painHypothesis].filter(Boolean).join(" • "),
+            email_subject: emailSubject,
+            email_body: emailBody,
+            email_generated_at: new Date().toISOString(),
+          }).select().single();
+
+          if (!error && data) {
+            inserted.push(data);
+            seenDomains.add(domain);
+          }
+        }
+      }
+    }
+
+    return new Response(JSON.stringify({
+      inserted: inserted.length,
+      state,
+      candidates_processed: candidatesProcessed,
+      target: TARGET,
+      leads: inserted,
+    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  } catch (e) {
+    console.error(e);
+    return new Response(JSON.stringify({ error: String(e) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+});
