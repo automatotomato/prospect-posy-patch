@@ -185,6 +185,8 @@ export default function SalesDashboard() {
         <SidebarLink active={tab === "activity"} icon={<ActivityIcon className="w-4 h-4" />} label="Activity" onClick={() => { setTab("activity"); setMobileNavOpen(false); }} />
         <SidebarLink active={tab === "followups"} icon={<Clock className="w-4 h-4" />} label="Follow-ups" badge={dueFollowUps.length || undefined} onClick={() => { setTab("followups"); setMobileNavOpen(false); }} />
         <SidebarLink icon={<HelpCircle className="w-4 h-4" />} label="How It Works" active={tab === "how-it-works"} onClick={() => { setTab("how-it-works"); setMobileNavOpen(false); }} className="ml-5 w-[calc(100%-1.25rem)]" />
+        <SidebarLink active={tab === "clients"} icon={<Building2 className="w-4 h-4" />} label="My Contacts" onClick={() => { setTab("clients"); setMobileNavOpen(false); }} />
+        <SidebarLink active={tab === "campaigns"} icon={<Mail className="w-4 h-4" />} label="Campaigns" onClick={() => { setTab("campaigns"); setMobileNavOpen(false); }} />
       </nav>
 
       <div className="p-3 border-t border-border space-y-1">
