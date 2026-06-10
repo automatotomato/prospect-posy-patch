@@ -24,8 +24,9 @@ const QUERIES = [
   "equipment rental", "freight broker",
 ];
 
-const TARGET = 50;
-const MAX_CANDIDATES = 180;
+const TARGET = 15; // per invocation — call multiple times to reach 50/day
+const MAX_CANDIDATES = 60;
+const TIME_BUDGET_MS = 110_000; // stay under 150s edge timeout
 
 function isExcluded(text: string) {
   const t = (text || "").toLowerCase();
