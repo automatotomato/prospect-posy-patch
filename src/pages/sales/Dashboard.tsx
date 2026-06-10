@@ -660,10 +660,11 @@ function KanbanLeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) 
 }
 
 function LeadTable({
-  leads, loading, emptyText, onOpen, showColumn,
+  leads, loading, emptyText, onOpen, showColumn, selected, onToggle,
 }: {
   leads: Lead[]; loading: boolean; emptyText: string; onOpen: (l: Lead) => void;
   showColumn: "follow_up" | "queued" | "updated";
+  selected?: Set<string>; onToggle?: (id: string) => void;
 }) {
   if (loading) return <p className="text-sm text-muted-foreground p-6">Loading…</p>;
   if (leads.length === 0)
@@ -671,31 +672,43 @@ function LeadTable({
   return (
     <div className="bg-card border border-border rounded-2xl overflow-hidden">
       <div className="divide-y divide-border">
-        {leads.map((l) => (
-          <button
-            key={l.id}
-            onClick={() => onOpen(l)}
-            className="w-full text-left px-5 py-3 hover:bg-muted/30 flex items-center gap-4 transition-colors"
-          >
-            <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center shrink-0 text-primary">
-              <Building2 className="w-4 h-4" />
+        {leads.map((l) => {
+          const isSelected = selected?.has(l.id);
+          return (
+            <div
+              key={l.id}
+              className={`w-full px-5 py-3 hover:bg-muted/30 flex items-center gap-4 transition-colors ${isSelected ? "bg-primary/5" : ""}`}
+            >
+              {onToggle && (
+                <Checkbox
+                  checked={!!isSelected}
+                  onCheckedChange={() => onToggle(l.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label="Select lead"
+                />
+              )}
+              <button onClick={() => onOpen(l)} className="flex items-center gap-4 text-left flex-1 min-w-0">
+                <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center shrink-0 text-primary">
+                  <Building2 className="w-4 h-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium truncate">{l.business_name}</div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {[l.industry, l.city, l.state].filter(Boolean).join(" · ") || "—"}
+                    {l.phone && <> · {l.phone}</>}
+                  </div>
+                </div>
+                <div className="text-xs text-muted-foreground hidden sm:block w-28 text-right">
+                  {showColumn === "follow_up" && <>Follow-up {fmtDate(l.follow_up_at)}</>}
+                  {showColumn === "queued" && <>Queued {fmtDate(l.queued_at)}</>}
+                  {showColumn === "updated" && <>{fmtDate(l.last_activity_at || l.created_at)}</>}
+                </div>
+                <StageBadge stage={l.stage} />
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </button>
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="font-medium truncate">{l.business_name}</div>
-              <div className="text-xs text-muted-foreground truncate">
-                {[l.industry, l.city, l.state].filter(Boolean).join(" · ") || "—"}
-                {l.phone && <> · {l.phone}</>}
-              </div>
-            </div>
-            <div className="text-xs text-muted-foreground hidden sm:block w-28 text-right">
-              {showColumn === "follow_up" && <>Follow-up {fmtDate(l.follow_up_at)}</>}
-              {showColumn === "queued" && <>Queued {fmtDate(l.queued_at)}</>}
-              {showColumn === "updated" && <>{fmtDate(l.last_activity_at || l.created_at)}</>}
-            </div>
-            <StageBadge stage={l.stage} />
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-          </button>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
