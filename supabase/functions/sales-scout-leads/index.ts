@@ -180,7 +180,15 @@ Deno.serve(async (req) => {
           },
           body: JSON.stringify({ textQuery: `${q} in ${city}`, pageSize: 15 }),
         });
-        if (!placesRes.ok) continue;
+        if (!placesRes.ok) {
+          const errTxt = await placesRes.text();
+          console.error("Places API error", placesRes.status, errTxt.slice(0, 300));
+          return new Response(JSON.stringify({
+            error: `Google Places API error (${placesRes.status})`,
+            details: errTxt.slice(0, 500),
+            hint: "The GOOGLE_PLACES_API_KEY secret appears to be invalid or has restrictions. Update it in project settings.",
+          }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
         const placesJson = await placesRes.json();
         const places = (placesJson.places || []) as any[];
 
