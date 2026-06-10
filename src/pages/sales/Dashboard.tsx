@@ -16,9 +16,12 @@ import {
   LogOut, Sparkles, Copy, Check, RefreshCw, Search, Trash2,
   ListChecks, Clock, Users, Send, MoreVertical, ChevronRight, Activity as ActivityIcon, TrendingUp,
   LayoutDashboard, Kanban, Settings as SettingsIcon, Bell, Building2, MapPin, HelpCircle, Menu,
+  Mail,
 } from "lucide-react";
 import { useSalesLeads, STAGES, type Lead } from "@/hooks/useSalesLeads";
 import { FollowUpSequencePanel } from "@/components/sales/FollowUpSequencePanel";
+import { ClientsPanel } from "@/components/sales/ClientsPanel";
+import { CampaignsPanel } from "@/components/sales/CampaignsPanel";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const VERTICALS = [
