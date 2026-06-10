@@ -23,7 +23,7 @@ export type SalesCtx = {
   logActivity: (leadId: string, type: string, note?: string, metadata?: any) => Promise<void>;
   setStage: (lead: Lead, stage: string, note?: string) => Promise<void>;
   scheduleFollowUp: (lead: Lead, days: number) => Promise<void>;
-  removeLead: (id: string) => Promise<void>;
+  removeLead: (id: string) => Promise<any>;
   stats: { total: number; by: Record<string, number>; dueFollowUps: number };
   dueFollowUps: Lead[];
   queuedLeads: Lead[];
