@@ -105,6 +105,22 @@ export default function SalesLayout() {
     }
   }, [leads, openLead]);
 
+  // Poll pending approvals (admins only)
+  useEffect(() => {
+    if (!isAdmin) { setPendingApprovals(0); return; }
+    const load = async () => {
+      const { count } = await supabase
+        .from("email_approvals")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending");
+      setPendingApprovals(count || 0);
+    };
+    load();
+    const t = setInterval(load, 30000);
+    return () => clearInterval(t);
+  }, [isAdmin, pathname]);
+
+
   const discover = async () => {
     setDiscovering(true);
     toast.info("Scout running — this can take 1–2 minutes…");
