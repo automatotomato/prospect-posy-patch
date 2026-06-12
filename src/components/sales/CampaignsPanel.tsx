@@ -169,8 +169,11 @@ export function CampaignsPanel() {
 
       <CampaignDialog
         open={createOpen}
-        onOpenChange={setCreateOpen}
+        onOpenChange={(v) => { setCreateOpen(v); if (!v) setPreset(null); }}
         onDone={load}
+        presetName={preset?.name}
+        presetDescription={preset?.description}
+        presetClientIds={preset?.clientIds}
       />
       {openId && (
         <CampaignDialog
@@ -180,6 +183,15 @@ export function CampaignsPanel() {
           onDone={load}
         />
       )}
+      <SegmentAssistantDialog
+        open={assistantOpen}
+        onOpenChange={setAssistantOpen}
+        onUseSegment={(p) => {
+          setPreset(p);
+          setAssistantOpen(false);
+          setCreateOpen(true);
+        }}
+      />
     </div>
   );
 }
