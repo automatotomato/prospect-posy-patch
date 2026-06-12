@@ -356,6 +356,7 @@ function UploadCsvDialog({ open, onOpenChange, onDone }: {
         location: r.location?.trim() || null,
         notes: r.notes?.trim() || null,
         tags: r.tags ? r.tags.split(/[;|]/).map((t) => t.trim()).filter(Boolean) : null,
+        client_type: normalizeClientType(r.client_type),
       }));
 
     if (payload.length === 0) return toast.error("No valid rows (business_name required)");
