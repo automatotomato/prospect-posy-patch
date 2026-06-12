@@ -494,6 +494,17 @@ export default function Settings() {
                       {m.accepted_at ? "Active" : "Pending"}
                     </Badge>
                     {isAdmin && (
+                      <Button
+                        variant="outline" size="sm"
+                        onClick={() => setPermsMember(m)}
+                        className="h-7 gap-1"
+                        title="Edit permissions"
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5" />
+                        <span className="hidden md:inline">Permissions</span>
+                      </Button>
+                    )}
+                    {isAdmin && (
                       <Button variant="ghost" size="sm" onClick={() => removeMember(m.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
                     )}
                   </div>
@@ -502,7 +513,15 @@ export default function Settings() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        <PermissionsDialog
+          open={!!permsMember}
+          onOpenChange={(v) => { if (!v) setPermsMember(null); }}
+          member={permsMember}
+          onSaved={() => void loadAll()}
+        />
       </main>
+
     </div>
   );
 }
