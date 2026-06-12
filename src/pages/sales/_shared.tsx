@@ -57,6 +57,7 @@ export type SalesCtx = {
   bulkSetStage: (ids: string[], stage: string) => Promise<any>;
   bulkUpdate: (ids: string[], patch: Partial<Lead>) => Promise<any>;
   bulkScheduleFollowUp: (ids: string[], days: number) => Promise<any>;
+  bulkAssign: (ids: string[], userId: string | null) => Promise<any>;
 
   // scout
   discovering: boolean;
@@ -66,7 +67,13 @@ export type SalesCtx = {
   // scan
   scanOpen: boolean;
   setScanOpen: (v: boolean) => void;
+
+  // permissions
+  can: (key: import("@/hooks/usePermissions").PermissionKey) => boolean;
+  isAdmin: boolean;
+  pendingApprovals: number;
 };
+
 
 export const SalesContext = createContext<SalesCtx | null>(null);
 export function useSales(): SalesCtx {
