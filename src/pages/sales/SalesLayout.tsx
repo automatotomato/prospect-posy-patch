@@ -252,10 +252,12 @@ export default function SalesLayout() {
     search, setSearch,
     industries, industryFilter, setIndustryFilter,
     openLead, setOpenLead, generate, generatingId, copy, copiedId,
-    selected, toggleOne, clearSelection, selectMany, bulkDelete, bulkSetStage, bulkUpdate, bulkScheduleFollowUp,
+    selected, toggleOne, clearSelection, selectMany, bulkDelete, bulkSetStage, bulkUpdate, bulkScheduleFollowUp, bulkAssign,
     discovering, discover, lastScout,
     scanOpen, setScanOpen,
+    can, isAdmin, pendingApprovals,
   };
+
 
   // Page title from route
   const pageTitle = (() => {
