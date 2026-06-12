@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Upload, Plus, Trash2, RefreshCw, Search, Users, Mail, Phone } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 
 export type Client = {
@@ -62,6 +63,7 @@ export function ClientsPanel() {
   const [query, setQuery] = useState("");
   const [uploadOpen, setUploadOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [industryFilter, setIndustryFilter] = useState<string>("all");
 
   const load = async () => {
     setLoading(true);
@@ -76,7 +78,10 @@ export function ClientsPanel() {
 
   useEffect(() => { load(); }, []);
 
+  const industries = Array.from(new Set(clients.map((c) => c.industry).filter(Boolean) as string[])).sort((a, b) => a.localeCompare(b));
+
   const filtered = clients.filter((c) => {
+    if (industryFilter !== "all" && (c.industry || "") !== industryFilter) return false;
     if (!query.trim()) return true;
     const q = query.toLowerCase();
     return [c.business_name, c.contact_name, c.email, c.phone, c.industry, c.location]
@@ -120,8 +125,8 @@ export function ClientsPanel() {
       </div>
 
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
-        <div className="p-3 border-b border-border">
-          <div className="relative">
+        <div className="p-3 border-b border-border flex flex-col md:flex-row gap-2">
+          <div className="relative flex-1">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={query}
@@ -130,7 +135,24 @@ export function ClientsPanel() {
               className="pl-9 bg-secondary border-border h-10"
             />
           </div>
+          <Select value={industryFilter} onValueChange={setIndustryFilter}>
+            <SelectTrigger className="w-full md:w-[220px] h-10 bg-secondary border-border">
+              <SelectValue placeholder="Industry" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All industries</SelectItem>
+              {industries.map((i) => (
+                <SelectItem key={i} value={i}>{i}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {industryFilter !== "all" && (
+            <button onClick={() => setIndustryFilter("all")} className="text-xs text-muted-foreground hover:text-foreground underline self-center">
+              Clear
+            </button>
+          )}
         </div>
+
 
         {loading ? (
           <div className="p-6 text-sm text-muted-foreground">Loading…</div>
