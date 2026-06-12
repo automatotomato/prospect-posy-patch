@@ -169,11 +169,11 @@ export default function Approvals() {
               <>
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Subject</label>
-                  <Input value={e.subject} onChange={(ev) => setEdit(a.id, { subject: ev.target.value })} className="bg-secondary border-border mt-1" />
+                  <Input value={e.subject} onChange={(ev) => setEdit(a, { subject: ev.target.value })} className="bg-secondary border-border mt-1" />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Body</label>
-                  <Textarea rows={10} value={e.body} onChange={(ev) => setEdit(a.id, { body: ev.target.value })} className="bg-secondary border-border mt-1 font-mono text-sm" />
+                  <Textarea rows={10} value={e.body} onChange={(ev) => setEdit(a, { body: ev.target.value })} className="bg-secondary border-border mt-1 font-mono text-sm" />
                 </div>
                 <div className="flex gap-2 justify-end">
                   <Button variant="outline" onClick={() => reject(a)} disabled={busy === a.id}>
