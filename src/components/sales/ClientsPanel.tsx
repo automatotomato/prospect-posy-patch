@@ -526,3 +526,78 @@ function AddClientDialog({ open, onOpenChange, onDone }: {
     </Dialog>
   );
 }
+
+function BulkEditClientsDialog({
+  open, onOpenChange, count, onSave,
+}: {
+  open: boolean; onOpenChange: (v: boolean) => void; count: number;
+  onSave: (patch: Partial<Client>) => Promise<void> | void;
+}) {
+  const [industry, setIndustry] = useState("");
+  const [location, setLocation] = useState("");
+  const [dnc, setDnc] = useState<string>("");
+  const [unsub, setUnsub] = useState<string>("");
+  const [saving, setSaving] = useState(false);
+
+  const reset = () => { setIndustry(""); setLocation(""); setDnc(""); setUnsub(""); };
+
+  const submit = async () => {
+    const patch: Partial<Client> = {};
+    if (industry.trim()) patch.industry = industry.trim();
+    if (location.trim()) patch.location = location.trim();
+    if (dnc) patch.do_not_contact = dnc === "true";
+    if (unsub) patch.unsubscribed = unsub === "true";
+    if (Object.keys(patch).length === 0) { onOpenChange(false); return; }
+    setSaving(true);
+    await onSave(patch);
+    setSaving(false);
+    reset();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) reset(); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit {count} contact{count > 1 ? "s" : ""}</DialogTitle>
+          <DialogDescription>Only fields you fill in will be updated.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label className="text-xs">Industry</Label>
+            <Input value={industry} onChange={(e) => setIndustry(e.target.value)} placeholder="e.g. Plumbing" className="bg-secondary border-border" />
+          </div>
+          <div>
+            <Label className="text-xs">Location</Label>
+            <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="City, ST" className="bg-secondary border-border" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">Do not contact</Label>
+              <Select value={dnc} onValueChange={setDnc}>
+                <SelectTrigger className="bg-secondary border-border"><SelectValue placeholder="Keep" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="true">Mark DNC</SelectItem>
+                  <SelectItem value="false">Clear DNC</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Unsubscribed</Label>
+              <Select value={unsub} onValueChange={setUnsub}>
+                <SelectTrigger className="bg-secondary border-border"><SelectValue placeholder="Keep" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="true">Mark unsubscribed</SelectItem>
+                  <SelectItem value="false">Re-subscribe</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={submit} disabled={saving}>{saving ? "Saving…" : `Update ${count}`}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
