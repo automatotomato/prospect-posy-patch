@@ -54,6 +54,7 @@ export default function SalesLayout() {
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [industryFilter, setIndustryFilter] = useState<string>("all");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
   const [leadsOpen, setLeadsOpen] = useState(true);
