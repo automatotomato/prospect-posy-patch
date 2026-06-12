@@ -90,7 +90,7 @@ export default function Settings() {
 
   async function saveDiscovery() {
     const { error } = await supabase.from("agent_settings").update({
-      setting_value: { verticals, locations, targetCount, rotateCities: true } as any,
+      setting_value: { verticals, excludedVerticals, locations, targetCount, rotateCities: true } as any,
     }).eq("setting_key", "discovery");
     if (error) return toast({ title: "Save failed", description: error.message, variant: "destructive" });
     toast({ title: "Discovery settings saved" });
