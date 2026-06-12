@@ -553,6 +553,17 @@ function AddClientDialog({ open, onOpenChange, onDone }: {
               <Input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} className="bg-secondary border-border" />
             </div>
             <div className="col-span-2">
+              <Label className="text-xs">Contact type</Label>
+              <Select value={form.client_type} onValueChange={(v) => setForm({ ...form, client_type: v as ClientType })}>
+                <SelectTrigger className="bg-secondary border-border"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="current">Current customer</SelectItem>
+                  <SelectItem value="previous">Previous customer</SelectItem>
+                  <SelectItem value="prospect">Prospect</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-2">
               <Label className="text-xs">Notes</Label>
               <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="bg-secondary border-border" />
             </div>
