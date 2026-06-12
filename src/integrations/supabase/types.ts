@@ -1017,6 +1017,53 @@ export type Database = {
         }
         Relationships: []
       }
+      sales_wins: {
+        Row: {
+          amount: number | null
+          closed_by: string | null
+          created_at: string
+          currency: string
+          deal_notes: string | null
+          id: string
+          lead_id: string
+          owner_id: string | null
+          updated_at: string
+          won_at: string
+        }
+        Insert: {
+          amount?: number | null
+          closed_by?: string | null
+          created_at?: string
+          currency?: string
+          deal_notes?: string | null
+          id?: string
+          lead_id: string
+          owner_id?: string | null
+          updated_at?: string
+          won_at?: string
+        }
+        Update: {
+          amount?: number | null
+          closed_by?: string | null
+          created_at?: string
+          currency?: string
+          deal_notes?: string | null
+          id?: string
+          lead_id?: string
+          owner_id?: string | null
+          updated_at?: string
+          won_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_wins_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: true
+            referencedRelation: "sales_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scheduled_emails: {
         Row: {
           body: string
