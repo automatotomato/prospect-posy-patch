@@ -21,6 +21,8 @@ import Followups from "./pages/sales/Followups";
 import Campaigns from "./pages/sales/Campaigns";
 import HowItWorks from "./pages/sales/HowItWorks";
 import SalesSettings from "./pages/sales/Settings";
+import Approvals from "./pages/sales/Approvals";
+
 
 const queryClient = new QueryClient();
 
