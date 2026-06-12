@@ -2,7 +2,10 @@ import { createContext, useContext, useState } from "react";
 import {
   Activity as ActivityIcon, Building2, Check, ChevronRight, Clock, Copy,
   ListChecks, MapPin, MoreVertical, Pencil, RefreshCw, Send, Sparkles, Trash2, TrendingUp,
+  Users as UsersIcon,
 } from "lucide-react";
+import { AssigneeSelect } from "@/components/sales/AssigneeSelect";
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
