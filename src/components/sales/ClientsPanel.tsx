@@ -183,8 +183,19 @@ export function ClientsPanel() {
               className="pl-9 bg-secondary border-border h-10"
             />
           </div>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-full md:w-[200px] h-10 bg-secondary border-border">
+              <SelectValue placeholder="Contact type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All types</SelectItem>
+              <SelectItem value="current">Current customers</SelectItem>
+              <SelectItem value="previous">Previous customers</SelectItem>
+              <SelectItem value="prospect">Prospects</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={industryFilter} onValueChange={setIndustryFilter}>
-            <SelectTrigger className="w-full md:w-[220px] h-10 bg-secondary border-border">
+            <SelectTrigger className="w-full md:w-[200px] h-10 bg-secondary border-border">
               <SelectValue placeholder="Industry" />
             </SelectTrigger>
             <SelectContent>
@@ -194,8 +205,8 @@ export function ClientsPanel() {
               ))}
             </SelectContent>
           </Select>
-          {industryFilter !== "all" && (
-            <button onClick={() => setIndustryFilter("all")} className="text-xs text-muted-foreground hover:text-foreground underline self-center">
+          {(industryFilter !== "all" || typeFilter !== "all") && (
+            <button onClick={() => { setIndustryFilter("all"); setTypeFilter("all"); }} className="text-xs text-muted-foreground hover:text-foreground underline self-center">
               Clear
             </button>
           )}
