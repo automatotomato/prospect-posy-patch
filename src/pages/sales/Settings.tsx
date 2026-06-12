@@ -54,6 +54,8 @@ export default function Settings() {
   const [sequence, setSequence] = useState<Touchpoint[]>(() => loadSequence());
   const [editingStep, setEditingStep] = useState<Touchpoint | null>(null);
   const [previewStepId, setPreviewStepId] = useState<string | null>(null);
+  const [permsMember, setPermsMember] = useState<Member | null>(null);
+
 
   useEffect(() => { saveSequence(sequence); }, [sequence]);
 
