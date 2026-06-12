@@ -181,7 +181,7 @@ Deno.serve(async (req) => {
     async function processPlace(p: any, q: string, city: string) {
       const name: string = p.displayName?.text || "";
       const types = (p.types || []).join(" ");
-      if (!name || isExcluded(name) || isExcluded(types) || isExcluded(q)) return null;
+      if (!name || isBlocked(name) || isBlocked(types) || isBlocked(q)) return null;
       const website: string | null = p.websiteUri || null;
       if (!website) return null;
       const domain = domainFromUrl(website);
