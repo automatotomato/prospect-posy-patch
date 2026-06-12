@@ -398,8 +398,9 @@ function Meta({ label, value }: { label: string; value: React.ReactNode }) {
 
 /* ============ Bulk action bar ============ */
 export function BulkBar() {
-  const { selected, clearSelection, bulkDelete, bulkSetStage, bulkUpdate, bulkScheduleFollowUp } = useSales();
+  const { selected, clearSelection, bulkDelete, bulkSetStage, bulkUpdate, bulkScheduleFollowUp, bulkAssign, can } = useSales();
   const [editOpen, setEditOpen] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
   if (selected.size === 0) return null;
   const ids = Array.from(selected);
   return (
@@ -408,36 +409,47 @@ export function BulkBar() {
         <Badge variant="secondary" className="font-semibold">{selected.size} selected</Badge>
         <button onClick={clearSelection} className="text-muted-foreground hover:text-foreground" aria-label="Clear">×</button>
         <div className="h-5 w-px bg-border" />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="outline" className="h-8">Stage <MoreVertical className="w-3 h-3 ml-1" /></Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuLabel>Move {selected.size} to…</DropdownMenuLabel>
-            {STAGES.map((s) => (
-              <DropdownMenuItem key={s.id} onClick={() => bulkSetStage(ids, s.id)}>{s.label}</DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="outline" className="h-8 gap-1"><Clock className="w-3.5 h-3.5" />Follow-up</Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuLabel>Schedule for {selected.size}</DropdownMenuLabel>
-            {[1, 3, 7, 14, 30].map((d) => (
-              <DropdownMenuItem key={d} onClick={() => bulkScheduleFollowUp(ids, d)}>In {d} day{d > 1 ? "s" : ""}</DropdownMenuItem>
-            ))}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => bulkUpdate(ids, { follow_up_at: null })}>Clear follow-up</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => setEditOpen(true)}>
-          <Pencil className="w-3.5 h-3.5" />Edit
+        {can("edit_leads") && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline" className="h-8">Stage <MoreVertical className="w-3 h-3 ml-1" /></Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuLabel>Move {selected.size} to…</DropdownMenuLabel>
+              {STAGES.map((s) => (
+                <DropdownMenuItem key={s.id} onClick={() => bulkSetStage(ids, s.id)}>{s.label}</DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+        {can("edit_leads") && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline" className="h-8 gap-1"><Clock className="w-3.5 h-3.5" />Follow-up</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuLabel>Schedule for {selected.size}</DropdownMenuLabel>
+              {[1, 3, 7, 14, 30].map((d) => (
+                <DropdownMenuItem key={d} onClick={() => bulkScheduleFollowUp(ids, d)}>In {d} day{d > 1 ? "s" : ""}</DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => bulkUpdate(ids, { follow_up_at: null })}>Clear follow-up</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+        <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => setAssignOpen(true)}>
+          <UsersIcon className="w-3.5 h-3.5" />Assign
         </Button>
-        <Button size="sm" variant="destructive" className="h-8 gap-1" onClick={() => bulkDelete(ids)}>
-          <Trash2 className="w-3.5 h-3.5" />Delete
-        </Button>
+        {can("edit_leads") && (
+          <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => setEditOpen(true)}>
+            <Pencil className="w-3.5 h-3.5" />Edit
+          </Button>
+        )}
+        {can("delete_leads") && (
+          <Button size="sm" variant="destructive" className="h-8 gap-1" onClick={() => bulkDelete(ids)}>
+            <Trash2 className="w-3.5 h-3.5" />Delete
+          </Button>
+        )}
       </div>
 
       <BulkEditDialog
@@ -446,9 +458,44 @@ export function BulkBar() {
         count={ids.length}
         onSave={async (patch) => { await bulkUpdate(ids, patch); setEditOpen(false); }}
       />
+
+      <BulkAssignDialog
+        open={assignOpen}
+        onOpenChange={setAssignOpen}
+        count={ids.length}
+        onAssign={async (userId) => { await bulkAssign(ids, userId); setAssignOpen(false); }}
+      />
     </>
   );
 }
+
+function BulkAssignDialog({
+  open, onOpenChange, count, onAssign,
+}: {
+  open: boolean; onOpenChange: (v: boolean) => void; count: number;
+  onAssign: (userId: string | null) => Promise<void> | void;
+}) {
+  const [userId, setUserId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  return (
+    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) setUserId(null); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Assign {count} lead{count > 1 ? "s" : ""}</DialogTitle>
+          <DialogDescription>Pick a team member to own follow-up on these leads. Choose "Unassigned" to clear ownership.</DialogDescription>
+        </DialogHeader>
+        <AssigneeSelect value={userId} onChange={setUserId} className="h-10 bg-secondary border-border" />
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={async () => { setSaving(true); await onAssign(userId); setSaving(false); }} disabled={saving}>
+            {saving ? "Saving…" : userId ? "Assign" : "Unassign"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 
 function BulkEditDialog({
   open, onOpenChange, count, onSave,
