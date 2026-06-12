@@ -8,11 +8,13 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
   LogOut, Sparkles, Search, Clock, Users, Activity as ActivityIcon,
   LayoutDashboard, Kanban, Settings as SettingsIcon, Bell, Building2, HelpCircle, Menu,
-  Mail, ChevronDown,
+  Mail, ChevronDown, ShieldCheck,
 } from "lucide-react";
 import { useSalesLeads, type Lead, STAGES } from "@/hooks/useSalesLeads";
 import { ScanCardDialog } from "@/components/sales/ScanCardDialog";
 import { SalesContext, BulkBar, LeadDrawer } from "./_shared";
+import { usePermissions } from "@/hooks/usePermissions";
+
 
 export default function SalesLayout() {
   const { user, signOut } = useAuth();
