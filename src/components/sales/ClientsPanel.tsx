@@ -86,6 +86,7 @@ export function ClientsPanel() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [industryFilter, setIndustryFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editOpen, setEditOpen] = useState(false);
   const toggleOne = (id: string) => setSelected((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
