@@ -66,7 +66,23 @@ export default function SalesLayout() {
     await bulkUpdate(ids, { follow_up_at: d.toISOString(), stage: "follow_up" });
   };
 
+  const bulkAssign = async (ids: string[], userId: string | null) => {
+    if (!ids.length) return;
+    const { data, error } = await supabase.from("sales_leads").update({
+      assigned_to: userId, last_activity_at: new Date().toISOString(),
+    }).in("id", ids).select();
+    if (error) return toast.error(error.message);
+    const map = new Map((data as Lead[]).map((d) => [d.id, d]));
+    setLeads((p) => p.map((l) => map.get(l.id) || l));
+    toast.success(userId ? `Assigned ${ids.length} lead${ids.length > 1 ? "s" : ""}` : `Unassigned ${ids.length} lead${ids.length > 1 ? "s" : ""}`);
+    clearSelection();
+  };
+
   const selectMany = (ids: string[]) => setSelected(new Set(ids));
+
+  const { can, isAdmin } = usePermissions();
+  const [pendingApprovals, setPendingApprovals] = useState(0);
+
 
   const [discovering, setDiscovering] = useState(false);
   const [lastScout, setLastScout] = useState<{ state: string; inserted: number } | null>(null);
