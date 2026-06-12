@@ -75,6 +75,7 @@ export default function Settings() {
     if (discovery?.setting_value) {
       const v = discovery.setting_value as any;
       setVerticals(v.verticals || []);
+      setExcludedVerticals(v.excludedVerticals || []);
       setLocations(v.locations || []);
       setTargetCount(v.targetCount || 50);
     }
