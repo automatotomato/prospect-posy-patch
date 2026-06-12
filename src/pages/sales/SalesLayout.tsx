@@ -8,7 +8,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
   LogOut, Sparkles, Search, Clock, Users, Activity as ActivityIcon,
   LayoutDashboard, Kanban, Settings as SettingsIcon, Bell, Building2, HelpCircle, Menu,
-  Mail, ChevronDown, ShieldCheck,
+  Mail, ChevronDown, ShieldCheck, Trophy,
 } from "lucide-react";
 import { useSalesLeads, type Lead, STAGES } from "@/hooks/useSalesLeads";
 import { ScanCardDialog } from "@/components/sales/ScanCardDialog";
@@ -225,6 +225,7 @@ export default function SalesLayout() {
         {isAdmin && (
           <SideNav to="/sales/approvals" icon={<ShieldCheck className="w-4 h-4" />} label="Approvals" badge={pendingApprovals || undefined} onClick={() => setMobileNavOpen(false)} />
         )}
+        <SideNav to="/sales/wins" icon={<Trophy className="w-4 h-4" />} label="Wins" onClick={() => setMobileNavOpen(false)} />
         <SideNav to="/sales/how-it-works" icon={<HelpCircle className="w-4 h-4" />} label="How It Works" onClick={() => setMobileNavOpen(false)} />
       </nav>
 
@@ -270,7 +271,9 @@ export default function SalesLayout() {
     if (pathname.startsWith("/sales/followups")) return "Follow-ups";
     if (pathname.startsWith("/sales/campaigns")) return "Campaigns";
     if (pathname.startsWith("/sales/approvals")) return "Email Approvals";
+    if (pathname.startsWith("/sales/wins")) return "Wins";
     if (pathname.startsWith("/sales/how-it-works")) return "How It Works";
+
 
     return "Sales";
   })();
