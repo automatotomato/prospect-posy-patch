@@ -253,6 +253,9 @@ export function ClientsPanel() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium text-sm truncate">{c.business_name}</span>
+                        <Badge variant="outline" className={`text-[10px] ${TYPE_BADGE[c.client_type] || TYPE_BADGE.current}`}>
+                          {TYPE_LABEL[c.client_type] || "Current customer"}
+                        </Badge>
                         {c.industry && <Badge variant="secondary" className="text-[10px]">{c.industry}</Badge>}
                         {c.do_not_contact && <Badge variant="destructive" className="text-[10px]">DNC</Badge>}
                         {c.unsubscribed && <Badge variant="outline" className="text-[10px]">Unsubscribed</Badge>}
