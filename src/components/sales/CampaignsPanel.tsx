@@ -7,9 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Mail, Plus, Play, Pause, Trash2, RefreshCw, ChevronRight, Users, Clock, Send } from "lucide-react";
+import { Mail, Plus, Play, Pause, Trash2, RefreshCw, ChevronRight, Users, Clock, Send, Sparkles, Wand2 } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import type { Client } from "./ClientsPanel";
+import type { Client, ClientType } from "./ClientsPanel";
+import { TYPE_LABEL } from "./ClientsPanel";
 
 type CampaignStatus = "draft" | "active" | "paused" | "completed";
 
