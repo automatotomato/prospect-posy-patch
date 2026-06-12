@@ -293,48 +293,170 @@ export function LeadDrawer({
           </div>
         </div>
 
-        <div className="p-5 space-y-5">
-          <div className="grid grid-cols-2 gap-4 text-xs">
-            <Meta label="Website" value={lead.website ? <a href={lead.website} target="_blank" rel="noreferrer" className="underline truncate block text-primary">{lead.website}</a> : "—"} />
-            <Meta label="Phone" value={lead.phone || "—"} />
-            <Meta label="Email" value={lead.email || "—"} />
-            <Meta label="Last contacted" value={fmtDate(lead.last_contacted_at)} />
-            <Meta label="Follow-up" value={fmtDate(lead.follow_up_at)} />
-            <Meta label="Touches" value={String(lead.contact_count)} />
-          </div>
+        <DrawerBody
+          lead={lead}
+          onGenerate={onGenerate} generating={generating}
+          onCopy={onCopy} copied={copied}
+          onStage={onStage} onFollowUp={onFollowUp} onDelete={onDelete}
+          activities={activities}
+        />
+      </div>
+    </>
+  );
+}
 
-          <div className="flex flex-wrap gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="sm" variant="outline">Move stage <MoreVertical className="w-3 h-3 ml-1" /></Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuLabel>Set stage</DropdownMenuLabel>
-                {STAGES.map((s) => (
-                  <DropdownMenuItem key={s.id} onClick={() => onStage(s.id)} disabled={s.id === lead.stage}>
-                    {s.label}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            {lead.stage !== "queued" && (
-              <Button size="sm" variant="outline" onClick={() => onStage("queued")}><ListChecks className="w-3 h-3 mr-1" />Queue</Button>
+function DrawerBody({
+  lead, onGenerate, generating, onCopy, copied, onStage, onFollowUp, onDelete, activities,
+}: {
+  lead: Lead;
+  onGenerate: () => void; generating: boolean;
+  onCopy: () => void; copied: boolean;
+  onStage: (s: string) => void; onFollowUp: (days: number) => void; onDelete: () => void;
+  activities: { id: string; type: string; note: string | null; created_at: string }[];
+}) {
+  const { can, bulkAssign, setLeads } = useSales();
+  const [requesting, setRequesting] = useState(false);
+
+  const onAssign = async (userId: string | null) => {
+    await bulkAssign([lead.id], userId);
+    setLeads((p) => p.map((l) => (l.id === lead.id ? { ...l, assigned_to: userId } : l)));
+  };
+
+  const onRequestApproval = async () => {
+    if (!lead.email_body || !lead.email_subject) return;
+    setRequesting(true);
+    const { data: u } = await (await import("@/integrations/supabase/client")).supabase.auth.getUser();
+    const userId = u.user?.id;
+    if (!userId) { setRequesting(false); return; }
+    const { error } = await (await import("@/integrations/supabase/client")).supabase
+      .from("email_approvals")
+      .insert({
+        lead_id: lead.id,
+        requested_by: userId,
+        subject: lead.email_subject,
+        body: lead.email_body,
+      });
+    setRequesting(false);
+    if (error) return (await import("sonner")).toast.error(error.message);
+    (await import("sonner")).toast.success("Sent to admin for approval");
+  };
+
+  return (
+    <div className="p-5 space-y-5">
+      <div className="grid grid-cols-2 gap-4 text-xs">
+        <Meta label="Website" value={lead.website ? <a href={lead.website} target="_blank" rel="noreferrer" className="underline truncate block text-primary">{lead.website}</a> : "—"} />
+        <Meta label="Phone" value={lead.phone || "—"} />
+        <Meta label="Email" value={lead.email || "—"} />
+        <Meta label="Last contacted" value={fmtDate(lead.last_contacted_at)} />
+        <Meta label="Follow-up" value={fmtDate(lead.follow_up_at)} />
+        <Meta label="Touches" value={String(lead.contact_count)} />
+      </div>
+
+      <div className="space-y-1">
+        <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Assigned to</div>
+        <AssigneeSelect value={lead.assigned_to} onChange={onAssign} />
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {can("edit_leads") && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline">Move stage <MoreVertical className="w-3 h-3 ml-1" /></Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuLabel>Set stage</DropdownMenuLabel>
+              {STAGES.map((s) => (
+                <DropdownMenuItem key={s.id} onClick={() => onStage(s.id)} disabled={s.id === lead.stage}>
+                  {s.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+        {can("edit_leads") && lead.stage !== "queued" && (
+          <Button size="sm" variant="outline" onClick={() => onStage("queued")}><ListChecks className="w-3 h-3 mr-1" />Queue</Button>
+        )}
+        {can("edit_leads") && (
+          <Button size="sm" variant="outline" onClick={() => onStage("contacted")}><Send className="w-3 h-3 mr-1" />Mark contacted</Button>
+        )}
+        {can("edit_leads") && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline"><Clock className="w-3 h-3 mr-1" />Follow up</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              {[1, 3, 7, 14, 30].map((d) => (
+                <DropdownMenuItem key={d} onClick={() => onFollowUp(d)}>In {d} day{d > 1 ? "s" : ""}</DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+        {can("delete_leads") && (
+          <Button size="sm" variant="ghost" onClick={onDelete} className="text-destructive ml-auto">
+            <Trash2 className="w-3 h-3 mr-1" />Delete
+          </Button>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="text-sm font-semibold">Outreach email</div>
+          <div className="flex gap-2 flex-wrap">
+            {can("draft_emails") && (
+              <Button size="sm" variant="outline" onClick={onGenerate} disabled={generating}>
+                {generating ? <><RefreshCw className="w-3 h-3 mr-1 animate-spin" />Drafting</> : <><Sparkles className="w-3 h-3 mr-1" />{lead.email_body ? "Regenerate" : "Generate"}</>}
+              </Button>
             )}
-            <Button size="sm" variant="outline" onClick={() => onStage("contacted")}><Send className="w-3 h-3 mr-1" />Mark contacted</Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="sm" variant="outline"><Clock className="w-3 h-3 mr-1" />Follow up</Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                {[1, 3, 7, 14, 30].map((d) => (
-                  <DropdownMenuItem key={d} onClick={() => onFollowUp(d)}>In {d} day{d > 1 ? "s" : ""}</DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button size="sm" variant="ghost" onClick={onDelete} className="text-destructive ml-auto">
-              <Trash2 className="w-3 h-3 mr-1" />Delete
-            </Button>
+            {lead.email_body && (
+              <Button size="sm" variant="outline" onClick={onCopy}>
+                {copied ? <><Check className="w-3 h-3 mr-1" />Copied</> : <><Copy className="w-3 h-3 mr-1" />Copy</>}
+              </Button>
+            )}
+            {lead.email_body && !can("send_emails") && (
+              <Button size="sm" onClick={onRequestApproval} disabled={requesting}>
+                <Send className="w-3 h-3 mr-1" />{requesting ? "Submitting…" : "Request approval"}
+              </Button>
+            )}
           </div>
+        </div>
+        {lead.email_body ? (
+          <div className="border border-border rounded-xl p-4 bg-secondary/40 space-y-3">
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Subject</div>
+              <div className="text-sm font-semibold mt-1">{lead.email_subject}</div>
+            </div>
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Body</div>
+              <pre className="text-sm whitespace-pre-wrap font-sans mt-1 leading-relaxed">{lead.email_body}</pre>
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">No email drafted yet.</p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <div className="text-sm font-semibold">Activity</div>
+        {activities.length === 0 ? (
+          <p className="text-xs text-muted-foreground">No activity yet.</p>
+        ) : (
+          <ul className="space-y-2">
+            {activities.map((a) => (
+              <li key={a.id} className="flex items-center gap-2 text-xs">
+                <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                  <ActivityIconFor type={a.type} />
+                </div>
+                <span className="flex-1">{activityLabel(a)}</span>
+                <span className="text-muted-foreground">{fmtDate(a.created_at)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
