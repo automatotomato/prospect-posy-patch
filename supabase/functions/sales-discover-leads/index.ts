@@ -41,6 +41,21 @@ Deno.serve(async (req) => {
     const city: string = body.city || "Las Vegas, NV";
     const count: number = Math.min(Math.max(Number(body.count) || 10, 1), 20);
 
+    // Load user-defined excluded verticals from settings
+    const adminEarly = createClient(url, serviceKey);
+    const { data: discRow } = await adminEarly.from("agent_settings").select("setting_value").eq("setting_key", "discovery").maybeSingle();
+    const userExcluded: string[] = ((discRow?.setting_value as any)?.excludedVerticals || []).map((s: string) => String(s).toLowerCase());
+    const allExcluded = [...EXCLUDED, ...userExcluded];
+    const isBlocked = (text: string) => {
+      const t = (text || "").toLowerCase();
+      return allExcluded.some((kw) => kw && t.includes(kw));
+    };
+    if (isBlocked(vertical)) {
+      return new Response(JSON.stringify({ inserted: 0, skipped: "vertical excluded", vertical }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (!googleKey) {
       return new Response(JSON.stringify({ error: "GOOGLE_PLACES_API_KEY not set" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
