@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useSales, KpiTile } from "./_shared";
 
 export default function Dashboard() {
-  const { stats, dueFollowUps, discover, discovering, lastScout, setScanOpen } = useSales();
+  const { stats, dueFollowUps, discover, discovering, lastScout, setScanOpen, isAdmin } = useSales();
 
   return (
     <>
