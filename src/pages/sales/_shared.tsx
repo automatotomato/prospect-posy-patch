@@ -458,59 +458,6 @@ function DrawerBody({
 }
 
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-semibold">Outreach email</div>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={onGenerate} disabled={generating}>
-                  {generating ? <><RefreshCw className="w-3 h-3 mr-1 animate-spin" />Drafting</> : <><Sparkles className="w-3 h-3 mr-1" />{lead.email_body ? "Regenerate" : "Generate"}</>}
-                </Button>
-                {lead.email_body && (
-                  <Button size="sm" variant="outline" onClick={onCopy}>
-                    {copied ? <><Check className="w-3 h-3 mr-1" />Copied</> : <><Copy className="w-3 h-3 mr-1" />Copy</>}
-                  </Button>
-                )}
-              </div>
-            </div>
-            {lead.email_body ? (
-              <div className="border border-border rounded-xl p-4 bg-secondary/40 space-y-3">
-                <div>
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Subject</div>
-                  <div className="text-sm font-semibold mt-1">{lead.email_subject}</div>
-                </div>
-                <div>
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Body</div>
-                  <pre className="text-sm whitespace-pre-wrap font-sans mt-1 leading-relaxed">{lead.email_body}</pre>
-                </div>
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">No email drafted yet.</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <div className="text-sm font-semibold">Activity</div>
-            {activities.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No activity yet.</p>
-            ) : (
-              <ul className="space-y-2">
-                {activities.map((a) => (
-                  <li key={a.id} className="flex items-center gap-2 text-xs">
-                    <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                      <ActivityIconFor type={a.type} />
-                    </div>
-                    <span className="flex-1">{activityLabel(a)}</span>
-                    <span className="text-muted-foreground">{fmtDate(a.created_at)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
 
 function Meta({ label, value }: { label: string; value: React.ReactNode }) {
   return (
