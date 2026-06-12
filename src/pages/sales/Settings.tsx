@@ -35,9 +35,11 @@ export default function Settings() {
 
   // Discovery
   const [verticals, setVerticals] = useState<string[]>([]);
+  const [excludedVerticals, setExcludedVerticals] = useState<string[]>([]);
   const [locations, setLocations] = useState<string[]>([]);
   const [targetCount, setTargetCount] = useState(50);
   const [newVertical, setNewVertical] = useState("");
+  const [newExcluded, setNewExcluded] = useState("");
   const [newLocation, setNewLocation] = useState("");
 
   // Templates
@@ -73,6 +75,7 @@ export default function Settings() {
     if (discovery?.setting_value) {
       const v = discovery.setting_value as any;
       setVerticals(v.verticals || []);
+      setExcludedVerticals(v.excludedVerticals || []);
       setLocations(v.locations || []);
       setTargetCount(v.targetCount || 50);
     }
@@ -87,7 +90,7 @@ export default function Settings() {
 
   async function saveDiscovery() {
     const { error } = await supabase.from("agent_settings").update({
-      setting_value: { verticals, locations, targetCount, rotateCities: true } as any,
+      setting_value: { verticals, excludedVerticals, locations, targetCount, rotateCities: true } as any,
     }).eq("setting_key", "discovery");
     if (error) return toast({ title: "Save failed", description: error.message, variant: "destructive" });
     toast({ title: "Discovery settings saved" });
@@ -189,6 +192,26 @@ export default function Settings() {
                   <div className="flex gap-2 mt-4">
                     <Input placeholder="e.g. manufacturing" value={newVertical} onChange={e => setNewVertical(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && newVertical.trim()) { setVerticals([...verticals, newVertical.trim()]); setNewVertical(""); } }} />
                     <Button onClick={() => { if (newVertical.trim()) { setVerticals([...verticals, newVertical.trim()]); setNewVertical(""); } }}><Plus className="w-4 h-4" /></Button>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-border pt-6">
+                <h2 className="font-display text-base font-semibold flex items-center gap-2"><X className="w-4 h-4 text-destructive" />Excluded verticals</h2>
+                <p className="text-xs text-muted-foreground mt-1">Industries to skip during discovery — businesses unlikely to need Power BI, MS Fabric, or data automation work (e.g. landscaping, construction, salons). Matches any business name, type, or vertical containing these keywords.</p>
+                <div className="flex flex-wrap gap-2 mt-4">
+                  {excludedVerticals.map((v) => (
+                    <Badge key={v} variant="outline" className="gap-1.5 py-1.5 px-3 border-destructive/40 text-destructive">
+                      {v}
+                      {isAdmin && <button onClick={() => setExcludedVerticals(excludedVerticals.filter(x => x !== v))}><X className="w-3 h-3" /></button>}
+                    </Badge>
+                  ))}
+                  {excludedVerticals.length === 0 && <span className="text-xs text-muted-foreground">No exclusions yet</span>}
+                </div>
+                {isAdmin && (
+                  <div className="flex gap-2 mt-4">
+                    <Input placeholder="e.g. landscaping, construction, salon" value={newExcluded} onChange={e => setNewExcluded(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && newExcluded.trim()) { setExcludedVerticals([...excludedVerticals, newExcluded.trim().toLowerCase()]); setNewExcluded(""); } }} />
+                    <Button variant="outline" onClick={() => { if (newExcluded.trim()) { setExcludedVerticals([...excludedVerticals, newExcluded.trim().toLowerCase()]); setNewExcluded(""); } }}><Plus className="w-4 h-4" /></Button>
                   </div>
                 )}
               </div>

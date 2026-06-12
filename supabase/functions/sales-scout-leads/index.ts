@@ -141,6 +141,15 @@ Deno.serve(async (req) => {
     const userId = userData.user.id;
     const admin = createClient(url, serviceKey);
 
+    // Load user-defined excluded verticals from discovery settings
+    const { data: discRow } = await admin.from("agent_settings").select("setting_value").eq("setting_key", "discovery").maybeSingle();
+    const userExcluded: string[] = ((discRow?.setting_value as any)?.excludedVerticals || []).map((s: string) => String(s).toLowerCase());
+    const blockedKeywords = [...EXCLUDED, ...userExcluded];
+    const isBlocked = (text: string) => {
+      const t = (text || "").toLowerCase();
+      return blockedKeywords.some((kw) => kw && t.includes(kw));
+    };
+
     // Rotate state cursor
     const { data: cursorRow } = await admin.from("agent_settings").select("*").eq("setting_key", "scout_state_cursor").maybeSingle();
     const lastIdx = (cursorRow?.setting_value as any)?.index ?? -1;
@@ -172,7 +181,7 @@ Deno.serve(async (req) => {
     async function processPlace(p: any, q: string, city: string) {
       const name: string = p.displayName?.text || "";
       const types = (p.types || []).join(" ");
-      if (!name || isExcluded(name) || isExcluded(types) || isExcluded(q)) return null;
+      if (!name || isBlocked(name) || isBlocked(types) || isBlocked(q)) return null;
       const website: string | null = p.websiteUri || null;
       if (!website) return null;
       const domain = domainFromUrl(website);
