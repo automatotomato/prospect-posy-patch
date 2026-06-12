@@ -98,6 +98,26 @@ export function ClientsPanel() {
     if (error) return toast.error(error.message);
     toast.success("Contact removed");
     setClients((prev) => prev.filter((c) => c.id !== id));
+    setSelected((p) => { const n = new Set(p); n.delete(id); return n; });
+  };
+
+  const ids = Array.from(selected);
+  const bulkDelete = async () => {
+    if (!ids.length) return;
+    if (!confirm(`Delete ${ids.length} contact${ids.length > 1 ? "s" : ""}? This cannot be undone.`)) return;
+    const { error } = await supabase.from("clients").delete().in("id", ids);
+    if (error) return toast.error(error.message);
+    setClients((p) => p.filter((c) => !ids.includes(c.id)));
+    clearSelection();
+    toast.success(`Deleted ${ids.length} contacts`);
+  };
+  const bulkPatch = async (patch: Partial<Client>) => {
+    if (!ids.length) return;
+    const { data, error } = await supabase.from("clients").update(patch).in("id", ids).select();
+    if (error) return toast.error(error.message);
+    const map = new Map((data as Client[]).map((d) => [d.id, d]));
+    setClients((p) => p.map((c) => map.get(c.id) || c));
+    toast.success(`Updated ${ids.length} contact${ids.length > 1 ? "s" : ""}`);
   };
 
   return (
