@@ -29,9 +29,12 @@ export type SalesCtx = {
   queuedLeads: Lead[];
   filteredLeads: Lead[];
 
-  // search
+  // search & filters
   search: string;
   setSearch: (s: string) => void;
+  industries: string[];
+  industryFilter: string;
+  setIndustryFilter: (s: string) => void;
 
   // drawer
   openLead: Lead | null;
