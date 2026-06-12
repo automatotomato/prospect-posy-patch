@@ -78,7 +78,10 @@ export function ClientsPanel() {
 
   useEffect(() => { load(); }, []);
 
+  const industries = Array.from(new Set(clients.map((c) => c.industry).filter(Boolean) as string[])).sort((a, b) => a.localeCompare(b));
+
   const filtered = clients.filter((c) => {
+    if (industryFilter !== "all" && (c.industry || "") !== industryFilter) return false;
     if (!query.trim()) return true;
     const q = query.toLowerCase();
     return [c.business_name, c.contact_name, c.email, c.phone, c.industry, c.location]
