@@ -392,3 +392,35 @@ export function BulkBar() {
     </div>
   );
 }
+
+/* ============ Industry filter ============ */
+export function IndustryFilter({
+  value, onChange, industries, count, label = "Industry",
+}: {
+  value: string; onChange: (v: string) => void; industries: string[]; count?: number; label?: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 flex-wrap">
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger className="w-[220px] h-9 bg-card border-border text-sm">
+          <SelectValue placeholder={label} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All industries</SelectItem>
+          {industries.map((i) => (
+            <SelectItem key={i} value={i}>{i}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {value !== "all" && (
+        <button onClick={() => onChange("all")} className="text-xs text-muted-foreground hover:text-foreground underline">
+          Clear
+        </button>
+      )}
+      {typeof count === "number" && (
+        <span className="text-xs text-muted-foreground">{count} {count === 1 ? "result" : "results"}</span>
+      )}
+    </div>
+  );
+}
+
