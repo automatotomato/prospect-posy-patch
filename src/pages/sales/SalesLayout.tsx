@@ -107,16 +107,25 @@ export default function SalesLayout() {
       .sort((a, b) => new Date(a.follow_up_at!).getTime() - new Date(b.follow_up_at!).getTime());
   }, [leads]);
 
-  const queuedLeads = useMemo(() => leads.filter((l) => l.stage === "queued"), [leads]);
-  const filteredLeads = useMemo(() => {
-    if (!search.trim()) return leads;
+  const industries = useMemo(() => {
+    const set = new Set<string>();
+    leads.forEach((l) => { if (l.industry) set.add(l.industry); });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [leads]);
+
+  const matchesFilters = (l: Lead) => {
+    if (industryFilter !== "all" && (l.industry || "") !== industryFilter) return false;
+    if (!search.trim()) return true;
     const q = search.toLowerCase();
-    return leads.filter((l) =>
+    return (
       l.business_name.toLowerCase().includes(q) ||
       (l.city || "").toLowerCase().includes(q) ||
       (l.industry || "").toLowerCase().includes(q)
     );
-  }, [leads, search]);
+  };
+
+  const queuedLeads = useMemo(() => leads.filter((l) => l.stage === "queued" && matchesFilters(l)), [leads, search, industryFilter]);
+  const filteredLeads = useMemo(() => leads.filter(matchesFilters), [leads, search, industryFilter]);
 
   const initials = (user?.email || "ZC").slice(0, 2).toUpperCase();
 
