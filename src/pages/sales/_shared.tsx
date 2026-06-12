@@ -190,11 +190,29 @@ export function LeadTable({
   showColumn: "follow_up" | "queued" | "updated";
   selected?: Set<string>; onToggle?: (id: string) => void;
 }) {
+  const { selectMany, clearSelection } = useSales();
   if (loading) return <p className="text-sm text-muted-foreground p-6">Loading…</p>;
   if (leads.length === 0)
     return <div className="bg-card border border-border rounded-2xl p-8 text-sm text-muted-foreground text-center">{emptyText}</div>;
+  const allSelected = !!selected && leads.length > 0 && leads.every((l) => selected.has(l.id));
+  const someSelected = !!selected && leads.some((l) => selected.has(l.id)) && !allSelected;
   return (
     <div className="bg-card border border-border rounded-2xl overflow-hidden">
+      {onToggle && (
+        <div className="px-5 py-2.5 border-b border-border flex items-center gap-3 bg-muted/20 text-xs">
+          <Checkbox
+            checked={allSelected ? true : someSelected ? "indeterminate" : false}
+            onCheckedChange={(v) => {
+              if (v) selectMany(Array.from(new Set([...(selected ? Array.from(selected) : []), ...leads.map((l) => l.id)])));
+              else clearSelection();
+            }}
+            aria-label="Select all"
+          />
+          <span className="text-muted-foreground">
+            {selected && selected.size > 0 ? `${selected.size} selected` : `Select all ${leads.length}`}
+          </span>
+        </div>
+      )}
       <div className="divide-y divide-border">
         {leads.map((l) => {
           const isSelected = selected?.has(l.id);
