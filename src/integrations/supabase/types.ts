@@ -85,6 +85,7 @@ export type Database = {
           invited_at: string
           invited_by: string | null
           name: string | null
+          permissions: Json
           role: Database["public"]["Enums"]["app_role"]
         }
         Insert: {
@@ -94,6 +95,7 @@ export type Database = {
           invited_at?: string
           invited_by?: string | null
           name?: string | null
+          permissions?: Json
           role?: Database["public"]["Enums"]["app_role"]
         }
         Update: {
@@ -103,6 +105,7 @@ export type Database = {
           invited_at?: string
           invited_by?: string | null
           name?: string | null
+          permissions?: Json
           role?: Database["public"]["Enums"]["app_role"]
         }
         Relationships: []
@@ -370,6 +373,56 @@ export type Database = {
             columns: ["prospect_id"]
             isOneToOne: false
             referencedRelation: "prospects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_approvals: {
+        Row: {
+          body: string
+          created_at: string
+          decision_note: string | null
+          id: string
+          lead_id: string
+          requested_by: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          decision_note?: string | null
+          id?: string
+          lead_id: string
+          requested_by: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          decision_note?: string | null
+          id?: string
+          lead_id?: string
+          requested_by?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_approvals_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "sales_leads"
             referencedColumns: ["id"]
           },
         ]
@@ -885,6 +938,7 @@ export type Database = {
       }
       sales_leads: {
         Row: {
+          assigned_to: string | null
           business_name: string
           city: string | null
           contact_count: number
@@ -910,6 +964,7 @@ export type Database = {
           website: string | null
         }
         Insert: {
+          assigned_to?: string | null
           business_name: string
           city?: string | null
           contact_count?: number
@@ -935,6 +990,7 @@ export type Database = {
           website?: string | null
         }
         Update: {
+          assigned_to?: string | null
           business_name?: string
           city?: string | null
           contact_count?: number
