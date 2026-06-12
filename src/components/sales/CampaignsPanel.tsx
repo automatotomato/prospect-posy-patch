@@ -108,7 +108,10 @@ export function CampaignsPanel() {
         </div>
         <div className="flex gap-2">
           <Button variant="ghost" size="sm" onClick={load} className="gap-2"><RefreshCw className="w-4 h-4" /></Button>
-          <Button size="sm" onClick={() => setCreateOpen(true)} className="gap-2">
+          <Button variant="outline" size="sm" onClick={() => setAssistantOpen(true)} className="gap-2">
+            <Sparkles className="w-4 h-4" />AI Segment
+          </Button>
+          <Button size="sm" onClick={() => { setPreset(null); setCreateOpen(true); }} className="gap-2">
             <Plus className="w-4 h-4" />New campaign
           </Button>
         </div>
