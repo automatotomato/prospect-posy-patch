@@ -48,6 +48,24 @@ export default function SalesLayout() {
     toast.success(`Moved ${ids.length} leads to ${STAGES.find((s) => s.id === stage)?.label || stage}`);
   };
 
+  const bulkUpdate = async (ids: string[], patch: Partial<Lead>) => {
+    if (!ids.length) return;
+    const fullPatch: any = { ...patch, last_activity_at: new Date().toISOString() };
+    const { data, error } = await supabase.from("sales_leads").update(fullPatch).in("id", ids).select();
+    if (error) return toast.error(error.message);
+    const map = new Map((data as Lead[]).map((d) => [d.id, d]));
+    setLeads((p) => p.map((l) => map.get(l.id) || l));
+    toast.success(`Updated ${ids.length} lead${ids.length > 1 ? "s" : ""}`);
+  };
+
+  const bulkScheduleFollowUp = async (ids: string[], days: number) => {
+    if (!ids.length) return;
+    const d = new Date(); d.setDate(d.getDate() + days);
+    await bulkUpdate(ids, { follow_up_at: d.toISOString(), stage: "follow_up" });
+  };
+
+  const selectMany = (ids: string[]) => setSelected(new Set(ids));
+
   const [discovering, setDiscovering] = useState(false);
   const [lastScout, setLastScout] = useState<{ state: string; inserted: number } | null>(null);
   const [openLead, setOpenLead] = useState<Lead | null>(null);
