@@ -479,3 +479,194 @@ function CampaignDialog({ campaignId, open, onOpenChange, onDone, presetName, pr
     </Dialog>
   );
 }
+
+type ChatMsg = { role: "user" | "assistant"; content: string };
+type Segment = {
+  name?: string;
+  description?: string;
+  filter?: {
+    client_type?: ClientType[] | null;
+    industries?: string[] | null;
+    tags_any?: string[] | null;
+    location_includes?: string | null;
+    search?: string | null;
+    require_email?: boolean;
+    exclude_dnc?: boolean;
+    exclude_unsubscribed?: boolean;
+  };
+};
+
+function applySegmentFilter(clients: Client[], seg: Segment): Client[] {
+  const f = seg.filter || {};
+  return clients.filter((c) => {
+    if (f.client_type && f.client_type.length && !f.client_type.includes(c.client_type)) return false;
+    if (f.industries && f.industries.length && !f.industries.includes(c.industry || "")) return false;
+    if (f.tags_any && f.tags_any.length) {
+      const tags = (c.tags || []).map((t) => t.toLowerCase());
+      if (!f.tags_any.some((t) => tags.includes(t.toLowerCase()))) return false;
+    }
+    if (f.location_includes && !(c.location || "").toLowerCase().includes(f.location_includes.toLowerCase())) return false;
+    if (f.search) {
+      const q = f.search.toLowerCase();
+      const hay = [c.business_name, c.contact_name, c.email, c.industry, c.location, (c.tags || []).join(",")]
+        .filter(Boolean).join(" ").toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    if (f.require_email && !c.email) return false;
+    if (f.exclude_dnc !== false && c.do_not_contact) return false;
+    if (f.exclude_unsubscribed !== false && c.unsubscribed) return false;
+    return true;
+  });
+}
+
+function SegmentAssistantDialog({ open, onOpenChange, onUseSegment }: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onUseSegment: (p: { name: string; description: string; clientIds: string[] }) => void;
+}) {
+  const [clients, setClients] = useState<Client[]>([]);
+  const [messages, setMessages] = useState<ChatMsg[]>([]);
+  const [input, setInput] = useState("");
+  const [thinking, setThinking] = useState(false);
+  const [segment, setSegment] = useState<Segment | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setMessages([{
+      role: "assistant",
+      content: "Hi! I can help you build a segment for your next campaign. Are you targeting current customers, previous customers, or fresh prospects? Tell me the goal (re-engagement, upsell, intro offer, etc.) and any industry, location, or tag focus.",
+    }]);
+    setSegment(null); setInput("");
+    (async () => {
+      const { data } = await supabase.from("clients").select("*");
+      setClients((data as Client[]) || []);
+    })();
+  }, [open]);
+
+  const context = useMemo(() => {
+    const byType: Record<string, number> = {};
+    const industries = new Map<string, number>();
+    const tags = new Map<string, number>();
+    const locations = new Map<string, number>();
+    for (const c of clients) {
+      byType[c.client_type] = (byType[c.client_type] || 0) + 1;
+      if (c.industry) industries.set(c.industry, (industries.get(c.industry) || 0) + 1);
+      (c.tags || []).forEach((t) => tags.set(t, (tags.get(t) || 0) + 1));
+      if (c.location) locations.set(c.location, (locations.get(c.location) || 0) + 1);
+    }
+    const top = (m: Map<string, number>) => Array.from(m.entries()).sort((a, b) => b[1] - a[1]).map(([k]) => k);
+    return {
+      total: clients.length,
+      byType,
+      industries: top(industries),
+      tags: top(tags),
+      locations: top(locations),
+    };
+  }, [clients]);
+
+  const matched = useMemo(() => segment ? applySegmentFilter(clients, segment) : [], [segment, clients]);
+
+  const send = async () => {
+    const text = input.trim();
+    if (!text || thinking) return;
+    const next = [...messages, { role: "user" as const, content: text }];
+    setMessages(next); setInput(""); setThinking(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("campaigns-segment-assistant", {
+        body: { messages: next, context },
+      });
+      if (error) throw error;
+      const reply = (data as any)?.reply || "Sorry, no response.";
+      const seg = (data as any)?.segment || null;
+      setMessages((p) => [...p, { role: "assistant", content: reply }]);
+      if (seg) setSegment(seg);
+    } catch (e: any) {
+      toast.error(e.message || "Assistant failed");
+    } finally {
+      setThinking(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" />AI Segment Assistant</DialogTitle>
+          <DialogDescription>
+            Chat with the assistant to define your audience. It can split current vs previous customers, focus on industries, locations, or tags.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid md:grid-cols-[1fr_280px] gap-4 flex-1 min-h-0">
+          <div className="flex flex-col min-h-0 border border-border rounded-lg bg-secondary/30">
+            <ScrollArea className="flex-1 p-3">
+              <div className="space-y-3">
+                {messages.map((m, i) => (
+                  <div key={i} className={`text-sm ${m.role === "user" ? "text-right" : ""}`}>
+                    <div className={`inline-block max-w-[90%] px-3 py-2 rounded-lg whitespace-pre-wrap ${
+                      m.role === "user" ? "bg-primary text-primary-foreground" : "bg-card border border-border"
+                    }`}>{m.content}</div>
+                  </div>
+                ))}
+                {thinking && <div className="text-xs text-muted-foreground">Thinking…</div>}
+              </div>
+            </ScrollArea>
+            <div className="border-t border-border p-2 flex gap-2">
+              <Textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+                placeholder="e.g. Re-engage previous customers in healthcare in Las Vegas"
+                className="bg-background border-border min-h-[60px] text-sm"
+              />
+              <Button onClick={send} disabled={thinking || !input.trim()} className="self-end gap-1">
+                <Send className="w-4 h-4" />Send
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-3 min-h-0 flex flex-col">
+            <div className="border border-border rounded-lg p-3 text-xs">
+              <div className="font-semibold mb-2 flex items-center gap-1"><Users className="w-3 h-3" />Inventory</div>
+              <div className="text-muted-foreground">{context.total} contacts</div>
+              <div className="mt-1 space-y-0.5">
+                {(["current","previous","prospect"] as ClientType[]).map((t) => (
+                  <div key={t} className="flex justify-between"><span>{TYPE_LABEL[t]}</span><span className="font-mono">{context.byType[t] || 0}</span></div>
+                ))}
+              </div>
+            </div>
+
+            {segment && (
+              <div className="border border-primary/40 bg-primary/5 rounded-lg p-3 text-xs space-y-2 flex-1 min-h-0 flex flex-col">
+                <div className="flex items-center gap-1 font-semibold"><Wand2 className="w-3 h-3 text-primary" />Proposed segment</div>
+                {segment.name && <div className="font-medium">{segment.name}</div>}
+                {segment.description && <div className="text-muted-foreground">{segment.description}</div>}
+                <div className="text-muted-foreground">Matches: <span className="font-mono text-foreground">{matched.length}</span></div>
+                <ScrollArea className="flex-1 -mx-1">
+                  <ul className="px-1 space-y-0.5">
+                    {matched.slice(0, 20).map((c) => (
+                      <li key={c.id} className="truncate">{c.business_name}</li>
+                    ))}
+                    {matched.length > 20 && <li className="text-muted-foreground">+{matched.length - 20} more…</li>}
+                  </ul>
+                </ScrollArea>
+                <Button
+                  size="sm"
+                  className="gap-1 mt-2"
+                  disabled={matched.length === 0}
+                  onClick={() => onUseSegment({
+                    name: segment.name || "AI Segment",
+                    description: segment.description || "",
+                    clientIds: matched.map((c) => c.id),
+                  })}
+                >
+                  <Plus className="w-3.5 h-3.5" />Use segment in new campaign
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
