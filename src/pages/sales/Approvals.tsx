@@ -66,8 +66,9 @@ export default function Approvals() {
   if (!roleLoading && !role?.isAdmin) return <Navigate to="/sales" replace />;
 
   const editFor = (a: Approval) => edits[a.id] || { subject: a.subject, body: a.body };
-  const setEdit = (id: string, patch: Partial<{ subject: string; body: string }>) =>
-    setEdits((p) => ({ ...p, [id]: { ...editFor({ id, subject: "", body: "" } as any), ...p[id], ...patch }));
+  const setEdit = (a: Approval, patch: Partial<{ subject: string; body: string }>) =>
+    setEdits((p) => ({ ...p, [a.id]: { ...editFor(a), ...patch } }));
+
 
   const approve = async (a: Approval) => {
     const e = editFor(a);
