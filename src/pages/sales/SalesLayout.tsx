@@ -222,8 +222,12 @@ export default function SalesLayout() {
         <SideNav to="/sales/activity" icon={<ActivityIcon className="w-4 h-4" />} label="Activity" onClick={() => setMobileNavOpen(false)} />
         <SideNav to="/sales/followups" icon={<Clock className="w-4 h-4" />} label="Follow-ups" badge={dueFollowUps.length || undefined} onClick={() => setMobileNavOpen(false)} />
         <SideNav to="/sales/campaigns" icon={<Mail className="w-4 h-4" />} label="Campaigns" onClick={() => setMobileNavOpen(false)} />
+        {isAdmin && (
+          <SideNav to="/sales/approvals" icon={<ShieldCheck className="w-4 h-4" />} label="Approvals" badge={pendingApprovals || undefined} onClick={() => setMobileNavOpen(false)} />
+        )}
         <SideNav to="/sales/how-it-works" icon={<HelpCircle className="w-4 h-4" />} label="How It Works" onClick={() => setMobileNavOpen(false)} />
       </nav>
+
 
       <div className="p-3 border-t border-border space-y-1">
         <button
