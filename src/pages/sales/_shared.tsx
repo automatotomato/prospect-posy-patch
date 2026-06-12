@@ -269,12 +269,13 @@ export function LeadTable({
 
 /* ============ Lead Drawer ============ */
 export function LeadDrawer({
-  lead, onClose, activities, onGenerate, generating, onCopy, copied, onStage, onFollowUp, onDelete,
+  lead, onClose, activities, onGenerate, generating, onCopy, copied, onStage, onFollowUp, onDelete, onLogWin,
 }: {
   lead: Lead; onClose: () => void;
   activities: { id: string; type: string; note: string | null; created_at: string }[];
   onGenerate: () => void; generating: boolean; onCopy: () => void; copied: boolean;
   onStage: (s: string) => void; onFollowUp: (days: number) => void; onDelete: () => void;
+  onLogWin?: () => void;
 }) {
   return (
     <>
@@ -298,6 +299,7 @@ export function LeadDrawer({
           onGenerate={onGenerate} generating={generating}
           onCopy={onCopy} copied={copied}
           onStage={onStage} onFollowUp={onFollowUp} onDelete={onDelete}
+          onLogWin={onLogWin}
           activities={activities}
         />
       </div>
@@ -306,12 +308,13 @@ export function LeadDrawer({
 }
 
 function DrawerBody({
-  lead, onGenerate, generating, onCopy, copied, onStage, onFollowUp, onDelete, activities,
+  lead, onGenerate, generating, onCopy, copied, onStage, onFollowUp, onDelete, onLogWin, activities,
 }: {
   lead: Lead;
   onGenerate: () => void; generating: boolean;
   onCopy: () => void; copied: boolean;
   onStage: (s: string) => void; onFollowUp: (days: number) => void; onDelete: () => void;
+  onLogWin?: () => void;
   activities: { id: string; type: string; note: string | null; created_at: string }[];
 }) {
   const { can, bulkAssign, setLeads } = useSales();
@@ -390,6 +393,11 @@ function DrawerBody({
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+        )}
+        {lead.stage === "won" && onLogWin && (
+          <Button size="sm" variant="outline" onClick={onLogWin} className="text-emerald-400 border-emerald-500/40">
+            <TrendingUp className="w-3 h-3 mr-1" />Log win details
+          </Button>
         )}
         {can("delete_leads") && (
           <Button size="sm" variant="ghost" onClick={onDelete} className="text-destructive ml-auto">
