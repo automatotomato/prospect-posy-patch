@@ -88,7 +88,7 @@ TONE: founder-to-operator, confident, like a real proposal. Bullets ARE allowed 
       return "Most operations teams we talk to are running their business off spreadsheets that one person owns and that break every time something changes. We replace that with proper dashboards, small automations, and lightweight custom tools — so the data updates itself and leadership stops waiting for reports.";
     };
 
-    const cta = `If this resonates, reply to this email or call/text me at ${BRAND.phone} and we can compare notes for 10 minutes — no pitch.`;
+    const cta = `If this resonates, reply to this email, call/text me at ${BRAND.phone}, or grab a 15-min slot on the booking button below — no pitch. (Do NOT paste any URL into the body. The send pipeline appends a "Book a 15-min call" button automatically.)`;
 
     const contactName = businessData.contactName;
     const greeting = contactName ? `Hi ${contactName.split(' ')[0]},` : `Hi ${businessData.businessName || 'there'} team,`;

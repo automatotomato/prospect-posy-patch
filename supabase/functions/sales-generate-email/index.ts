@@ -64,6 +64,7 @@ Return strict JSON only:
 - Subject < 55 chars, casual, no clickbait.
 - Body < 110 words, plain text, opens with something specific (city / niche / name), not "I hope this finds you well".
 - End with a single open question.
+- Do NOT include a calendar/booking URL in the body — the send pipeline appends a "Book a 15-min call" button automatically. You may mention "grab a slot on my calendar below" or "reply, call, or pick a time" but never paste a URL.
 - Sign off exactly:\n— Z & C Consultants\n+1 (214) 997-4331`;
 
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {

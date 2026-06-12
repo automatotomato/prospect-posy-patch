@@ -8,11 +8,12 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
   LogOut, Sparkles, Search, Clock, Users, Activity as ActivityIcon,
   LayoutDashboard, Kanban, Settings as SettingsIcon, Bell, Building2, HelpCircle, Menu,
-  Mail, ChevronDown, ShieldCheck,
+  Mail, ChevronDown, ShieldCheck, Trophy,
 } from "lucide-react";
 import { useSalesLeads, type Lead, STAGES } from "@/hooks/useSalesLeads";
 import { ScanCardDialog } from "@/components/sales/ScanCardDialog";
 import { SalesContext, BulkBar, LeadDrawer } from "./_shared";
+import { LogWinDialog } from "@/components/sales/LogWinDialog";
 import { usePermissions } from "@/hooks/usePermissions";
 
 
@@ -93,6 +94,7 @@ export default function SalesLayout() {
   const [industryFilter, setIndustryFilter] = useState<string>("all");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
+  const [winLead, setWinLead] = useState<Lead | null>(null);
   const [leadsOpen, setLeadsOpen] = useState(true);
 
   useEffect(() => { if (!user) navigate("/sales/login", { replace: true }); }, [user, navigate]);
@@ -225,6 +227,7 @@ export default function SalesLayout() {
         {isAdmin && (
           <SideNav to="/sales/approvals" icon={<ShieldCheck className="w-4 h-4" />} label="Approvals" badge={pendingApprovals || undefined} onClick={() => setMobileNavOpen(false)} />
         )}
+        <SideNav to="/sales/wins" icon={<Trophy className="w-4 h-4" />} label="Wins" onClick={() => setMobileNavOpen(false)} />
         <SideNav to="/sales/how-it-works" icon={<HelpCircle className="w-4 h-4" />} label="How It Works" onClick={() => setMobileNavOpen(false)} />
       </nav>
 
@@ -270,7 +273,9 @@ export default function SalesLayout() {
     if (pathname.startsWith("/sales/followups")) return "Follow-ups";
     if (pathname.startsWith("/sales/campaigns")) return "Campaigns";
     if (pathname.startsWith("/sales/approvals")) return "Email Approvals";
+    if (pathname.startsWith("/sales/wins")) return "Wins";
     if (pathname.startsWith("/sales/how-it-works")) return "How It Works";
+
 
     return "Sales";
   })();
@@ -337,9 +342,24 @@ export default function SalesLayout() {
             generating={generatingId === openLead.id}
             onCopy={() => copy(openLead)}
             copied={copiedId === openLead.id}
-            onStage={(s) => setStage(openLead, s)}
+            onStage={async (s) => {
+              await setStage(openLead, s);
+              if (s === "won") setWinLead(openLead);
+            }}
             onFollowUp={(days) => scheduleFollowUp(openLead, days)}
             onDelete={() => { removeLead(openLead.id); setOpenLead(null); }}
+            onLogWin={() => setWinLead(openLead)}
+          />
+        )}
+
+        {winLead && (
+          <LogWinDialog
+            open={!!winLead}
+            onOpenChange={(v) => !v && setWinLead(null)}
+            leadId={winLead.id}
+            leadName={winLead.business_name}
+            ownerId={winLead.assigned_to}
+            onLogged={() => load()}
           />
         )}
 

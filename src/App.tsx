@@ -22,6 +22,8 @@ import Campaigns from "./pages/sales/Campaigns";
 import HowItWorks from "./pages/sales/HowItWorks";
 import SalesSettings from "./pages/sales/Settings";
 import Approvals from "./pages/sales/Approvals";
+import Wins from "./pages/sales/Wins";
+
 
 
 const queryClient = new QueryClient();
@@ -46,6 +48,7 @@ const App = () => (
               <Route path="followups" element={<Followups />} />
               <Route path="campaigns" element={<Campaigns />} />
               <Route path="approvals" element={<Approvals />} />
+              <Route path="wins" element={<Wins />} />
               <Route path="how-it-works" element={<HowItWorks />} />
 
             </Route>
