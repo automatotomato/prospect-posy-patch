@@ -1,14 +1,26 @@
-import { Check, MapPin, RefreshCw, Sparkles, Camera } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Check, MapPin, RefreshCw, Sparkles, Camera, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSales, KpiTile } from "./_shared";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Dashboard() {
   const { stats, dueFollowUps, discover, discovering, lastScout, setScanOpen, isAdmin } = useSales();
+  const [winsMonth, setWinsMonth] = useState<{ count: number; sum: number }>({ count: 0, sum: 0 });
+
+  useEffect(() => {
+    const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
+    supabase.from("sales_wins" as any).select("amount, won_at").gte("won_at", monthStart.toISOString())
+      .then(({ data }) => {
+        const rows = (data as any[]) || [];
+        setWinsMonth({ count: rows.length, sum: rows.reduce((s, r) => s + Number(r.amount || 0), 0) });
+      });
+  }, []);
 
   return (
     <>
       {/* KPI ROW */}
-      <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <KpiTile label="Total Leads" value={stats.total} delta={stats.total > 0 ? `${stats.total} active` : "—"} progress={Math.min(100, stats.total * 4)} />
         <KpiTile label="Queued" value={stats.by.queued || 0} delta="Ready to send" progress={Math.min(100, (stats.by.queued || 0) * 8)} />
         <KpiTile label="Contacted" value={stats.by.contacted || 0} delta="+ this week" deltaTone="emerald" progress={Math.min(100, (stats.by.contacted || 0) * 6)} />
@@ -19,7 +31,8 @@ export default function Dashboard() {
           deltaTone={dueFollowUps.length > 0 ? "amber" : "muted"}
           progress={Math.min(100, dueFollowUps.length * 12)}
         />
-        <KpiTile label="Won" value={stats.by.won || 0} delta="Closed deals" highlight progress={Math.min(100, (stats.by.won || 0) * 10)} />
+        <KpiTile label="Won (all)" value={stats.by.won || 0} delta="Closed deals" progress={Math.min(100, (stats.by.won || 0) * 10)} />
+        <KpiTile label="Wins this month" value={winsMonth.count} delta={winsMonth.sum ? `$${winsMonth.sum.toLocaleString()}` : "Log a deal"} deltaTone="emerald" highlight progress={Math.min(100, winsMonth.count * 20)} />
       </section>
 
       {/* SCAN BUSINESS CARD */}
