@@ -20,9 +20,12 @@ import {
   type Touchpoint,
 } from "@/components/sales/FollowUpSequencePanel";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { PermissionsDialog } from "@/components/sales/PermissionsDialog";
+import { ShieldCheck } from "lucide-react";
 
 type Template = { id: string; name: string; subject: string; body: string; category: string | null; is_default: boolean };
 type Member = { id: string; email: string; name: string | null; role: string; accepted_at: string | null };
+
 
 export default function Settings() {
   const navigate = useNavigate();
