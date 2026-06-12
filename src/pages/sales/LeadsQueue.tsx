@@ -1,6 +1,16 @@
-import { useSales, LeadTable } from "./_shared";
+import { useSales, LeadTable, IndustryFilter } from "./_shared";
 
 export default function LeadsQueue() {
-  const { queuedLeads, loading, setOpenLead, selected, toggleOne } = useSales();
-  return <LeadTable leads={queuedLeads} loading={loading} emptyText="Nothing queued. Move leads to Queue from the pipeline." onOpen={setOpenLead} showColumn="queued" selected={selected} onToggle={toggleOne} />;
+  const { queuedLeads, loading, setOpenLead, selected, toggleOne, industries, industryFilter, setIndustryFilter } = useSales();
+  return (
+    <div className="space-y-4">
+      <IndustryFilter
+        value={industryFilter}
+        onChange={setIndustryFilter}
+        industries={industries}
+        count={queuedLeads.length}
+      />
+      <LeadTable leads={queuedLeads} loading={loading} emptyText="Nothing queued for this industry." onOpen={setOpenLead} showColumn="queued" selected={selected} onToggle={toggleOne} />
+    </div>
+  );
 }
