@@ -177,11 +177,14 @@ export function CampaignsPanel() {
   );
 }
 
-function CampaignDialog({ campaignId, open, onOpenChange, onDone }: {
+function CampaignDialog({ campaignId, open, onOpenChange, onDone, presetName, presetDescription, presetClientIds }: {
   campaignId?: string;
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onDone: () => void;
+  presetName?: string;
+  presetDescription?: string;
+  presetClientIds?: string[];
 }) {
   const isEdit = !!campaignId;
   const [name, setName] = useState("");
@@ -221,13 +224,13 @@ function CampaignDialog({ campaignId, open, onOpenChange, onDone }: {
           setSelectedClientIds(new Set(enrolled));
         }
       } else {
-        setName(""); setDescription("");
+        setName(presetName || ""); setDescription(presetDescription || "");
         setSteps([{ step_order: 1, delay_days: 0, subject: "", body: "" }]);
-        setSelectedClientIds(new Set());
+        setSelectedClientIds(new Set(presetClientIds || []));
         setEnrolledIds(new Set());
       }
     })();
-  }, [open, campaignId, isEdit]);
+  }, [open, campaignId, isEdit, presetName, presetDescription, presetClientIds]);
 
   const filteredClients = useMemo(() => {
     const q = search.toLowerCase().trim();
