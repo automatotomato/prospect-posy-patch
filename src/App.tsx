@@ -21,6 +21,8 @@ import Followups from "./pages/sales/Followups";
 import Campaigns from "./pages/sales/Campaigns";
 import HowItWorks from "./pages/sales/HowItWorks";
 import SalesSettings from "./pages/sales/Settings";
+import Approvals from "./pages/sales/Approvals";
+
 
 const queryClient = new QueryClient();
 
@@ -43,7 +45,9 @@ const App = () => (
               <Route path="activity" element={<ActivityPage />} />
               <Route path="followups" element={<Followups />} />
               <Route path="campaigns" element={<Campaigns />} />
+              <Route path="approvals" element={<Approvals />} />
               <Route path="how-it-works" element={<HowItWorks />} />
+
             </Route>
             <Route path="/sales/settings" element={<ProtectedRoute><SalesSettings /></ProtectedRoute>} />
             <Route path="/team" element={<AdminRoute><Team /></AdminRoute>} />

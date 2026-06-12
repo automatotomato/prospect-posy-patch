@@ -8,11 +8,13 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
   LogOut, Sparkles, Search, Clock, Users, Activity as ActivityIcon,
   LayoutDashboard, Kanban, Settings as SettingsIcon, Bell, Building2, HelpCircle, Menu,
-  Mail, ChevronDown,
+  Mail, ChevronDown, ShieldCheck,
 } from "lucide-react";
 import { useSalesLeads, type Lead, STAGES } from "@/hooks/useSalesLeads";
 import { ScanCardDialog } from "@/components/sales/ScanCardDialog";
 import { SalesContext, BulkBar, LeadDrawer } from "./_shared";
+import { usePermissions } from "@/hooks/usePermissions";
+
 
 export default function SalesLayout() {
   const { user, signOut } = useAuth();
@@ -64,7 +66,23 @@ export default function SalesLayout() {
     await bulkUpdate(ids, { follow_up_at: d.toISOString(), stage: "follow_up" });
   };
 
+  const bulkAssign = async (ids: string[], userId: string | null) => {
+    if (!ids.length) return;
+    const { data, error } = await supabase.from("sales_leads").update({
+      assigned_to: userId, last_activity_at: new Date().toISOString(),
+    }).in("id", ids).select();
+    if (error) return toast.error(error.message);
+    const map = new Map((data as Lead[]).map((d) => [d.id, d]));
+    setLeads((p) => p.map((l) => map.get(l.id) || l));
+    toast.success(userId ? `Assigned ${ids.length} lead${ids.length > 1 ? "s" : ""}` : `Unassigned ${ids.length} lead${ids.length > 1 ? "s" : ""}`);
+    clearSelection();
+  };
+
   const selectMany = (ids: string[]) => setSelected(new Set(ids));
+
+  const { can, isAdmin } = usePermissions();
+  const [pendingApprovals, setPendingApprovals] = useState(0);
+
 
   const [discovering, setDiscovering] = useState(false);
   const [lastScout, setLastScout] = useState<{ state: string; inserted: number } | null>(null);
@@ -86,6 +104,22 @@ export default function SalesLayout() {
       if (!fresh) setOpenLead(null);
     }
   }, [leads, openLead]);
+
+  // Poll pending approvals (admins only)
+  useEffect(() => {
+    if (!isAdmin) { setPendingApprovals(0); return; }
+    const load = async () => {
+      const { count } = await supabase
+        .from("email_approvals")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending");
+      setPendingApprovals(count || 0);
+    };
+    load();
+    const t = setInterval(load, 30000);
+    return () => clearInterval(t);
+  }, [isAdmin, pathname]);
+
 
   const discover = async () => {
     setDiscovering(true);
@@ -188,8 +222,12 @@ export default function SalesLayout() {
         <SideNav to="/sales/activity" icon={<ActivityIcon className="w-4 h-4" />} label="Activity" onClick={() => setMobileNavOpen(false)} />
         <SideNav to="/sales/followups" icon={<Clock className="w-4 h-4" />} label="Follow-ups" badge={dueFollowUps.length || undefined} onClick={() => setMobileNavOpen(false)} />
         <SideNav to="/sales/campaigns" icon={<Mail className="w-4 h-4" />} label="Campaigns" onClick={() => setMobileNavOpen(false)} />
+        {isAdmin && (
+          <SideNav to="/sales/approvals" icon={<ShieldCheck className="w-4 h-4" />} label="Approvals" badge={pendingApprovals || undefined} onClick={() => setMobileNavOpen(false)} />
+        )}
         <SideNav to="/sales/how-it-works" icon={<HelpCircle className="w-4 h-4" />} label="How It Works" onClick={() => setMobileNavOpen(false)} />
       </nav>
+
 
       <div className="p-3 border-t border-border space-y-1">
         <button
@@ -214,10 +252,12 @@ export default function SalesLayout() {
     search, setSearch,
     industries, industryFilter, setIndustryFilter,
     openLead, setOpenLead, generate, generatingId, copy, copiedId,
-    selected, toggleOne, clearSelection, selectMany, bulkDelete, bulkSetStage, bulkUpdate, bulkScheduleFollowUp,
+    selected, toggleOne, clearSelection, selectMany, bulkDelete, bulkSetStage, bulkUpdate, bulkScheduleFollowUp, bulkAssign,
     discovering, discover, lastScout,
     scanOpen, setScanOpen,
+    can, isAdmin, pendingApprovals,
   };
+
 
   // Page title from route
   const pageTitle = (() => {
@@ -229,7 +269,9 @@ export default function SalesLayout() {
     if (pathname.startsWith("/sales/activity")) return "Activity";
     if (pathname.startsWith("/sales/followups")) return "Follow-ups";
     if (pathname.startsWith("/sales/campaigns")) return "Campaigns";
+    if (pathname.startsWith("/sales/approvals")) return "Email Approvals";
     if (pathname.startsWith("/sales/how-it-works")) return "How It Works";
+
     return "Sales";
   })();
 

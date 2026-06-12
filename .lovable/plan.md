@@ -1,67 +1,83 @@
 ## Goal
 
-Wipe the existing sales pipeline, then run an OpenAI-powered agent that scouts real SMB leads across **Nevada, California, and Texas** — broadened to any SMB with spreadsheet/reporting pain — and drafts a personalized email for each one. Every lead must have a verified email address; no email = not saved. Resend is **not** wired up yet; emails stay as drafts.
+Give admins fine-grained control over what each team member can do, the ability to assign specific leads to specific members, and an approval flow so reps can draft emails for admin sign-off before they go out.
 
-## 1. Clean slate
+---
 
-- Delete every row in `sales_leads`. Pipeline starts empty.
+## 1. Permissions checklist (per team member)
 
-## 2. New scouting agent (edge function `sales-scout-leads`)
+Stored on `allowed_users.permissions` (jsonb). Admins implicitly have everything. Keys:
 
-Replaces `sales-discover-leads`. Per run it produces up to **50** new leads with a valid email.
+- `view_leads` — see leads assigned to them
+- `edit_leads` — edit lead details / stage / notes
+- `draft_emails` — generate / save email drafts
+- `send_emails` — send without admin approval (otherwise drafts go to approval queue)
+- `send_sms` — text leads
+- `log_calls` — record call activity
+- `manage_campaigns` — create / edit campaigns
+- `import_contacts` — upload contacts CSV
+- `delete_leads` — remove leads
 
-Flow per run:
+**Settings → Team** gets a "Permissions" button next to each member that opens a dialog with the checklist. Saving writes to `allowed_users.permissions` for that member. Sales-rep visibility stays strict (current behavior): they only see leads where `assigned_to = auth.uid()`.
 
-```text
-  ┌─ pick state (NV / CA / TX, round-robin per run)
-  │
-  ├─ Google Places: SMBs in major metros (Vegas/Reno, LA/SF/SD/Sac, Houston/Dallas/Austin/SA)
-  │  broad query set: "small business", "professional services", "operations",
-  │  "logistics", "wholesale", "field services", "agency", "manufacturing"...
-  │
-  ├─ for each candidate:
-  │    1. dedupe by domain + business_name (owner-scoped)
-  │    2. OpenAI web-search tool finds a real contact email on the company
-  │       site / public sources (decision-maker > generic). Drop if none.
-  │    3. OpenAI summarizes what the business does + a spreadsheet/reporting
-  │       pain hypothesis (1–2 sentences, used to personalize email).
-  │    4. OpenAI drafts personalized email (subject + body, <120 words,
-  │       warm, references the business, soft CTA).
-  │    5. insert into sales_leads with status='drafted', source='ai_scout'
-  │
-  └─ stop when 50 inserted OR candidate pool exhausted; log run
+---
+
+## 2. Lead assignment
+
+- New `sales_leads.assigned_to` (uuid → auth.users). Defaults to `NULL`.
+- Bulk bar gains an **Assign to…** dropdown listing active team members.
+- Lead drawer gets an **Assignee** select.
+- RLS expanded: a rep can view/update a lead if `owner_id = auth.uid()` **or** `assigned_to = auth.uid()` **or** admin. Delete still requires `delete_leads` permission (enforced client-side; admins always allowed by RLS).
+
+Admins continue to see everything.
+
+---
+
+## 3. Email approval queue
+
+New table `email_approvals`:
+
+```
+id, lead_id, requested_by, subject, body,
+status ('pending'|'approved'|'rejected'|'sent'),
+reviewed_by, reviewed_at, decision_note, created_at
 ```
 
-Guarantees:
-- Lead is only saved if a valid-format, non-disposable email was found.
-- Hard exclusion list (healthcare/insurance/etc.) still enforced.
-- State rotation tracked in `agent_settings` so consecutive runs hit different states.
+Flow when a rep clicks **Send email** on a lead:
+- If they have `send_emails` → sends now (existing path).
+- Otherwise → inserts an `email_approvals` row (`pending`) and shows "Sent for admin approval".
 
-## 3. UI changes on `/sales`
+New **Approvals** sidebar item (admin only) → `/sales/approvals` page listing pending requests with:
+- Lead context (business, industry, city)
+- Editable subject / body
+- **Approve & send**, **Reject** (with optional reason)
 
-- Dashboard "Discover" panel becomes **"Scout 50 leads"** — single button, no vertical/city inputs (agent picks). Shows last run state + count.
-- Lead row still shows the AI-drafted subject/body with **Regenerate**, **Copy**, **Mark sent**. No send button.
-- Manual run only — no cron yet (per your choice).
+Approve updates row to `sent`, logs `sales_activities` "email_sent_approved", marks lead stage `contacted`. Reject sets `rejected` and notifies requester via in-app toast on next load (read on render).
 
-## 4. Data
+---
 
-`sales_leads` keeps its current shape. New `source` value: `ai_scout`. Add a small `agent_settings` row `scout_state_cursor` to remember which state was last used.
+## 4. Files touched
 
-## 5. Secrets / services
+**New**
+- `supabase/migrations/<ts>_permissions_and_approvals.sql` — `permissions` column, `assigned_to` column, RLS update, `email_approvals` table + policies + grants.
+- `src/hooks/usePermissions.ts` — fetch `allowed_users` row for current user, return `can(key)` helper; admins → all true.
+- `src/pages/sales/Approvals.tsx` — admin queue UI.
+- `src/components/sales/PermissionsDialog.tsx` — checkbox editor used in Settings.
+- `src/components/sales/AssigneeSelect.tsx` — reusable dropdown of team members.
 
-- Uses existing `OPENAI_API_KEY` and `GOOGLE_PLACES_API_KEY`. No new secrets.
-- Resend stays disconnected — explicitly out of scope.
+**Edited**
+- `src/pages/sales/Settings.tsx` — add per-member Permissions button + dialog.
+- `src/pages/sales/SalesLayout.tsx` — add `assigned_to` to context, expose `assignLeads`, `permissions` (`can`) via `useSales()`; add Approvals nav for admins; gate Scout / Send buttons.
+- `src/pages/sales/_shared.tsx` — extend `SalesCtx`, add assignee column + Assign action in `BulkBar`, gate Delete/Edit/Send.
+- `src/hooks/useSalesLeads.ts` — include `assigned_to` in `Lead` type.
+- `src/components/sales/CampaignsPanel.tsx` & `ClientsPanel.tsx` — gate create/import/delete on permissions.
+- `src/App.tsx` — register `/sales/approvals` route.
 
-## 6. Out of scope
-
-- Sending email (no Resend wiring).
-- Automated daily cron (manual button only for now; easy to add later).
-- Touching the Automate Planet CRM / drip system.
+---
 
 ## Technical notes
 
-- New edge function: `supabase/functions/sales-scout-leads/index.ts` (Deno, verify_jwt default, CORS).
-- Uses OpenAI `gpt-4o-mini` with the `web_search` tool for email discovery + summary; same model for email drafting.
-- Deletes `sales-discover-leads` references from the dashboard (function file can stay for now or be removed).
-- Frontend: update `src/pages/sales/Dashboard.tsx` discover panel + hook call in `src/hooks/useSalesLeads.ts`.
-- Migration: `DELETE FROM sales_leads;` + upsert `agent_settings` row for state cursor.
+- Admins are detected via existing `useCurrentRole().isAdmin` (already used in Settings).
+- Permissions are enforced both in the UI (hide/disable controls) **and** at the DB layer through RLS where possible (assignment & admin-only writes on `email_approvals`).
+- Backfill: existing leads have `assigned_to = NULL`. Admin can bulk-assign from the leads list. Reps see nothing until an admin assigns them work — matches the requested "Assigned only" visibility.
+- No changes to existing Resend/email send paths; the approval queue uses the same `sales-generate-email` and (when approved) the normal send path.

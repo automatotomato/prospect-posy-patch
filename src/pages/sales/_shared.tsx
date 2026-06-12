@@ -2,7 +2,10 @@ import { createContext, useContext, useState } from "react";
 import {
   Activity as ActivityIcon, Building2, Check, ChevronRight, Clock, Copy,
   ListChecks, MapPin, MoreVertical, Pencil, RefreshCw, Send, Sparkles, Trash2, TrendingUp,
+  Users as UsersIcon,
 } from "lucide-react";
+import { AssigneeSelect } from "@/components/sales/AssigneeSelect";
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -57,6 +60,7 @@ export type SalesCtx = {
   bulkSetStage: (ids: string[], stage: string) => Promise<any>;
   bulkUpdate: (ids: string[], patch: Partial<Lead>) => Promise<any>;
   bulkScheduleFollowUp: (ids: string[], days: number) => Promise<any>;
+  bulkAssign: (ids: string[], userId: string | null) => Promise<any>;
 
   // scout
   discovering: boolean;
@@ -66,7 +70,13 @@ export type SalesCtx = {
   // scan
   scanOpen: boolean;
   setScanOpen: (v: boolean) => void;
+
+  // permissions
+  can: (key: import("@/hooks/usePermissions").PermissionKey) => boolean;
+  isAdmin: boolean;
+  pendingApprovals: number;
 };
+
 
 export const SalesContext = createContext<SalesCtx | null>(null);
 export function useSales(): SalesCtx {
@@ -283,102 +293,171 @@ export function LeadDrawer({
           </div>
         </div>
 
-        <div className="p-5 space-y-5">
-          <div className="grid grid-cols-2 gap-4 text-xs">
-            <Meta label="Website" value={lead.website ? <a href={lead.website} target="_blank" rel="noreferrer" className="underline truncate block text-primary">{lead.website}</a> : "—"} />
-            <Meta label="Phone" value={lead.phone || "—"} />
-            <Meta label="Email" value={lead.email || "—"} />
-            <Meta label="Last contacted" value={fmtDate(lead.last_contacted_at)} />
-            <Meta label="Follow-up" value={fmtDate(lead.follow_up_at)} />
-            <Meta label="Touches" value={String(lead.contact_count)} />
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="sm" variant="outline">Move stage <MoreVertical className="w-3 h-3 ml-1" /></Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuLabel>Set stage</DropdownMenuLabel>
-                {STAGES.map((s) => (
-                  <DropdownMenuItem key={s.id} onClick={() => onStage(s.id)} disabled={s.id === lead.stage}>
-                    {s.label}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            {lead.stage !== "queued" && (
-              <Button size="sm" variant="outline" onClick={() => onStage("queued")}><ListChecks className="w-3 h-3 mr-1" />Queue</Button>
-            )}
-            <Button size="sm" variant="outline" onClick={() => onStage("contacted")}><Send className="w-3 h-3 mr-1" />Mark contacted</Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="sm" variant="outline"><Clock className="w-3 h-3 mr-1" />Follow up</Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                {[1, 3, 7, 14, 30].map((d) => (
-                  <DropdownMenuItem key={d} onClick={() => onFollowUp(d)}>In {d} day{d > 1 ? "s" : ""}</DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button size="sm" variant="ghost" onClick={onDelete} className="text-destructive ml-auto">
-              <Trash2 className="w-3 h-3 mr-1" />Delete
-            </Button>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-semibold">Outreach email</div>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={onGenerate} disabled={generating}>
-                  {generating ? <><RefreshCw className="w-3 h-3 mr-1 animate-spin" />Drafting</> : <><Sparkles className="w-3 h-3 mr-1" />{lead.email_body ? "Regenerate" : "Generate"}</>}
-                </Button>
-                {lead.email_body && (
-                  <Button size="sm" variant="outline" onClick={onCopy}>
-                    {copied ? <><Check className="w-3 h-3 mr-1" />Copied</> : <><Copy className="w-3 h-3 mr-1" />Copy</>}
-                  </Button>
-                )}
-              </div>
-            </div>
-            {lead.email_body ? (
-              <div className="border border-border rounded-xl p-4 bg-secondary/40 space-y-3">
-                <div>
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Subject</div>
-                  <div className="text-sm font-semibold mt-1">{lead.email_subject}</div>
-                </div>
-                <div>
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Body</div>
-                  <pre className="text-sm whitespace-pre-wrap font-sans mt-1 leading-relaxed">{lead.email_body}</pre>
-                </div>
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">No email drafted yet.</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <div className="text-sm font-semibold">Activity</div>
-            {activities.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No activity yet.</p>
-            ) : (
-              <ul className="space-y-2">
-                {activities.map((a) => (
-                  <li key={a.id} className="flex items-center gap-2 text-xs">
-                    <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                      <ActivityIconFor type={a.type} />
-                    </div>
-                    <span className="flex-1">{activityLabel(a)}</span>
-                    <span className="text-muted-foreground">{fmtDate(a.created_at)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
+        <DrawerBody
+          lead={lead}
+          onGenerate={onGenerate} generating={generating}
+          onCopy={onCopy} copied={copied}
+          onStage={onStage} onFollowUp={onFollowUp} onDelete={onDelete}
+          activities={activities}
+        />
       </div>
     </>
   );
 }
+
+function DrawerBody({
+  lead, onGenerate, generating, onCopy, copied, onStage, onFollowUp, onDelete, activities,
+}: {
+  lead: Lead;
+  onGenerate: () => void; generating: boolean;
+  onCopy: () => void; copied: boolean;
+  onStage: (s: string) => void; onFollowUp: (days: number) => void; onDelete: () => void;
+  activities: { id: string; type: string; note: string | null; created_at: string }[];
+}) {
+  const { can, bulkAssign, setLeads } = useSales();
+  const [requesting, setRequesting] = useState(false);
+
+  const onAssign = async (userId: string | null) => {
+    await bulkAssign([lead.id], userId);
+    setLeads((p) => p.map((l) => (l.id === lead.id ? { ...l, assigned_to: userId } : l)));
+  };
+
+  const onRequestApproval = async () => {
+    if (!lead.email_body || !lead.email_subject) return;
+    setRequesting(true);
+    const { data: u } = await (await import("@/integrations/supabase/client")).supabase.auth.getUser();
+    const userId = u.user?.id;
+    if (!userId) { setRequesting(false); return; }
+    const { error } = await (await import("@/integrations/supabase/client")).supabase
+      .from("email_approvals")
+      .insert({
+        lead_id: lead.id,
+        requested_by: userId,
+        subject: lead.email_subject,
+        body: lead.email_body,
+      });
+    setRequesting(false);
+    if (error) return (await import("sonner")).toast.error(error.message);
+    (await import("sonner")).toast.success("Sent to admin for approval");
+  };
+
+  return (
+    <div className="p-5 space-y-5">
+      <div className="grid grid-cols-2 gap-4 text-xs">
+        <Meta label="Website" value={lead.website ? <a href={lead.website} target="_blank" rel="noreferrer" className="underline truncate block text-primary">{lead.website}</a> : "—"} />
+        <Meta label="Phone" value={lead.phone || "—"} />
+        <Meta label="Email" value={lead.email || "—"} />
+        <Meta label="Last contacted" value={fmtDate(lead.last_contacted_at)} />
+        <Meta label="Follow-up" value={fmtDate(lead.follow_up_at)} />
+        <Meta label="Touches" value={String(lead.contact_count)} />
+      </div>
+
+      <div className="space-y-1">
+        <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Assigned to</div>
+        <AssigneeSelect value={lead.assigned_to} onChange={onAssign} />
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {can("edit_leads") && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline">Move stage <MoreVertical className="w-3 h-3 ml-1" /></Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuLabel>Set stage</DropdownMenuLabel>
+              {STAGES.map((s) => (
+                <DropdownMenuItem key={s.id} onClick={() => onStage(s.id)} disabled={s.id === lead.stage}>
+                  {s.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+        {can("edit_leads") && lead.stage !== "queued" && (
+          <Button size="sm" variant="outline" onClick={() => onStage("queued")}><ListChecks className="w-3 h-3 mr-1" />Queue</Button>
+        )}
+        {can("edit_leads") && (
+          <Button size="sm" variant="outline" onClick={() => onStage("contacted")}><Send className="w-3 h-3 mr-1" />Mark contacted</Button>
+        )}
+        {can("edit_leads") && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline"><Clock className="w-3 h-3 mr-1" />Follow up</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              {[1, 3, 7, 14, 30].map((d) => (
+                <DropdownMenuItem key={d} onClick={() => onFollowUp(d)}>In {d} day{d > 1 ? "s" : ""}</DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+        {can("delete_leads") && (
+          <Button size="sm" variant="ghost" onClick={onDelete} className="text-destructive ml-auto">
+            <Trash2 className="w-3 h-3 mr-1" />Delete
+          </Button>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="text-sm font-semibold">Outreach email</div>
+          <div className="flex gap-2 flex-wrap">
+            {can("draft_emails") && (
+              <Button size="sm" variant="outline" onClick={onGenerate} disabled={generating}>
+                {generating ? <><RefreshCw className="w-3 h-3 mr-1 animate-spin" />Drafting</> : <><Sparkles className="w-3 h-3 mr-1" />{lead.email_body ? "Regenerate" : "Generate"}</>}
+              </Button>
+            )}
+            {lead.email_body && (
+              <Button size="sm" variant="outline" onClick={onCopy}>
+                {copied ? <><Check className="w-3 h-3 mr-1" />Copied</> : <><Copy className="w-3 h-3 mr-1" />Copy</>}
+              </Button>
+            )}
+            {lead.email_body && !can("send_emails") && (
+              <Button size="sm" onClick={onRequestApproval} disabled={requesting}>
+                <Send className="w-3 h-3 mr-1" />{requesting ? "Submitting…" : "Request approval"}
+              </Button>
+            )}
+          </div>
+        </div>
+        {lead.email_body ? (
+          <div className="border border-border rounded-xl p-4 bg-secondary/40 space-y-3">
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Subject</div>
+              <div className="text-sm font-semibold mt-1">{lead.email_subject}</div>
+            </div>
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Body</div>
+              <pre className="text-sm whitespace-pre-wrap font-sans mt-1 leading-relaxed">{lead.email_body}</pre>
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">No email drafted yet.</p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <div className="text-sm font-semibold">Activity</div>
+        {activities.length === 0 ? (
+          <p className="text-xs text-muted-foreground">No activity yet.</p>
+        ) : (
+          <ul className="space-y-2">
+            {activities.map((a) => (
+              <li key={a.id} className="flex items-center gap-2 text-xs">
+                <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                  <ActivityIconFor type={a.type} />
+                </div>
+                <span className="flex-1">{activityLabel(a)}</span>
+                <span className="text-muted-foreground">{fmtDate(a.created_at)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
 
 function Meta({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -391,8 +470,9 @@ function Meta({ label, value }: { label: string; value: React.ReactNode }) {
 
 /* ============ Bulk action bar ============ */
 export function BulkBar() {
-  const { selected, clearSelection, bulkDelete, bulkSetStage, bulkUpdate, bulkScheduleFollowUp } = useSales();
+  const { selected, clearSelection, bulkDelete, bulkSetStage, bulkUpdate, bulkScheduleFollowUp, bulkAssign, can } = useSales();
   const [editOpen, setEditOpen] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
   if (selected.size === 0) return null;
   const ids = Array.from(selected);
   return (
@@ -401,36 +481,47 @@ export function BulkBar() {
         <Badge variant="secondary" className="font-semibold">{selected.size} selected</Badge>
         <button onClick={clearSelection} className="text-muted-foreground hover:text-foreground" aria-label="Clear">×</button>
         <div className="h-5 w-px bg-border" />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="outline" className="h-8">Stage <MoreVertical className="w-3 h-3 ml-1" /></Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuLabel>Move {selected.size} to…</DropdownMenuLabel>
-            {STAGES.map((s) => (
-              <DropdownMenuItem key={s.id} onClick={() => bulkSetStage(ids, s.id)}>{s.label}</DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="outline" className="h-8 gap-1"><Clock className="w-3.5 h-3.5" />Follow-up</Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuLabel>Schedule for {selected.size}</DropdownMenuLabel>
-            {[1, 3, 7, 14, 30].map((d) => (
-              <DropdownMenuItem key={d} onClick={() => bulkScheduleFollowUp(ids, d)}>In {d} day{d > 1 ? "s" : ""}</DropdownMenuItem>
-            ))}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => bulkUpdate(ids, { follow_up_at: null })}>Clear follow-up</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => setEditOpen(true)}>
-          <Pencil className="w-3.5 h-3.5" />Edit
+        {can("edit_leads") && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline" className="h-8">Stage <MoreVertical className="w-3 h-3 ml-1" /></Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuLabel>Move {selected.size} to…</DropdownMenuLabel>
+              {STAGES.map((s) => (
+                <DropdownMenuItem key={s.id} onClick={() => bulkSetStage(ids, s.id)}>{s.label}</DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+        {can("edit_leads") && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline" className="h-8 gap-1"><Clock className="w-3.5 h-3.5" />Follow-up</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuLabel>Schedule for {selected.size}</DropdownMenuLabel>
+              {[1, 3, 7, 14, 30].map((d) => (
+                <DropdownMenuItem key={d} onClick={() => bulkScheduleFollowUp(ids, d)}>In {d} day{d > 1 ? "s" : ""}</DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => bulkUpdate(ids, { follow_up_at: null })}>Clear follow-up</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+        <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => setAssignOpen(true)}>
+          <UsersIcon className="w-3.5 h-3.5" />Assign
         </Button>
-        <Button size="sm" variant="destructive" className="h-8 gap-1" onClick={() => bulkDelete(ids)}>
-          <Trash2 className="w-3.5 h-3.5" />Delete
-        </Button>
+        {can("edit_leads") && (
+          <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => setEditOpen(true)}>
+            <Pencil className="w-3.5 h-3.5" />Edit
+          </Button>
+        )}
+        {can("delete_leads") && (
+          <Button size="sm" variant="destructive" className="h-8 gap-1" onClick={() => bulkDelete(ids)}>
+            <Trash2 className="w-3.5 h-3.5" />Delete
+          </Button>
+        )}
       </div>
 
       <BulkEditDialog
@@ -439,9 +530,44 @@ export function BulkBar() {
         count={ids.length}
         onSave={async (patch) => { await bulkUpdate(ids, patch); setEditOpen(false); }}
       />
+
+      <BulkAssignDialog
+        open={assignOpen}
+        onOpenChange={setAssignOpen}
+        count={ids.length}
+        onAssign={async (userId) => { await bulkAssign(ids, userId); setAssignOpen(false); }}
+      />
     </>
   );
 }
+
+function BulkAssignDialog({
+  open, onOpenChange, count, onAssign,
+}: {
+  open: boolean; onOpenChange: (v: boolean) => void; count: number;
+  onAssign: (userId: string | null) => Promise<void> | void;
+}) {
+  const [userId, setUserId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  return (
+    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) setUserId(null); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Assign {count} lead{count > 1 ? "s" : ""}</DialogTitle>
+          <DialogDescription>Pick a team member to own follow-up on these leads. Choose "Unassigned" to clear ownership.</DialogDescription>
+        </DialogHeader>
+        <AssigneeSelect value={userId} onChange={setUserId} className="h-10 bg-secondary border-border" />
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={async () => { setSaving(true); await onAssign(userId); setSaving(false); }} disabled={saving}>
+            {saving ? "Saving…" : userId ? "Assign" : "Unassign"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 
 function BulkEditDialog({
   open, onOpenChange, count, onSave,

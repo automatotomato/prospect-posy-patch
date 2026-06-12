@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useSales, KpiTile } from "./_shared";
 
 export default function Dashboard() {
-  const { stats, dueFollowUps, discover, discovering, lastScout, setScanOpen } = useSales();
+  const { stats, dueFollowUps, discover, discovering, lastScout, setScanOpen, isAdmin } = useSales();
 
   return (
     <>
@@ -40,36 +40,39 @@ export default function Dashboard() {
         </Button>
       </section>
 
-      {/* SCOUT AGENT */}
-      <section className="bg-card border border-border rounded-2xl overflow-hidden shadow-xl">
-        <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-foreground/[0.02]">
-          <div>
-            <h2 className="font-display font-semibold text-sm">AI Lead Scout</h2>
-            <p className="text-xs text-muted-foreground">Pulls 50 SMB leads across Nevada, California, and Texas — every lead has a verified email and a personalized draft.</p>
-          </div>
-          <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-1 rounded uppercase tracking-wider border border-primary/20">
-            OpenAI · NV / CA / TX
-          </span>
-        </div>
-        <div className="p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="text-xs text-muted-foreground space-y-1">
-            <div className="flex items-center gap-2">
-              <MapPin className="w-3.5 h-3.5" />
-              <span>State rotates per run (NV → CA → TX). Target 50 verified leads.</span>
+      {/* SCOUT AGENT — admin only */}
+      {isAdmin && (
+        <section className="bg-card border border-border rounded-2xl overflow-hidden shadow-xl">
+          <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-foreground/[0.02]">
+            <div>
+              <h2 className="font-display font-semibold text-sm">AI Lead Scout</h2>
+              <p className="text-xs text-muted-foreground">Pulls 50 SMB leads across Nevada, California, and Texas — every lead has a verified email and a personalized draft.</p>
             </div>
-            {lastScout && (
-              <div className="flex items-center gap-2 text-emerald-400">
-                <Check className="w-3.5 h-3.5" />
-                <span>Last run: {lastScout.inserted} leads from {lastScout.state}</span>
-              </div>
-            )}
-            <div className="italic opacity-70">Healthcare, insurance, and medical verticals excluded.</div>
+            <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-1 rounded uppercase tracking-wider border border-primary/20">
+              OpenAI · NV / CA / TX
+            </span>
           </div>
-          <Button onClick={discover} disabled={discovering} size="lg" className="h-12 font-semibold gap-2 px-6">
-            {discovering ? <><RefreshCw className="w-4 h-4 animate-spin" />Scouting…</> : <><Sparkles className="w-4 h-4" />Scout 50 leads</>}
-          </Button>
-        </div>
-      </section>
+          <div className="p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="text-xs text-muted-foreground space-y-1">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-3.5 h-3.5" />
+                <span>State rotates per run (NV → CA → TX). Target 50 verified leads.</span>
+              </div>
+              {lastScout && (
+                <div className="flex items-center gap-2 text-emerald-400">
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Last run: {lastScout.inserted} leads from {lastScout.state}</span>
+                </div>
+              )}
+              <div className="italic opacity-70">Healthcare, insurance, and medical verticals excluded.</div>
+            </div>
+            <Button onClick={discover} disabled={discovering} size="lg" className="h-12 font-semibold gap-2 px-6">
+              {discovering ? <><RefreshCw className="w-4 h-4 animate-spin" />Scouting…</> : <><Sparkles className="w-4 h-4" />Scout 50 leads</>}
+            </Button>
+          </div>
+        </section>
+      )}
+
     </>
   );
 }

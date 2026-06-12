@@ -22,7 +22,9 @@ export type Lead = {
   contact_count: number;
   last_activity_at: string | null;
   created_at: string;
+  assigned_to: string | null;
 };
+
 
 export type Activity = {
   id: string;

@@ -20,9 +20,12 @@ import {
   type Touchpoint,
 } from "@/components/sales/FollowUpSequencePanel";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { PermissionsDialog } from "@/components/sales/PermissionsDialog";
+import { ShieldCheck } from "lucide-react";
 
 type Template = { id: string; name: string; subject: string; body: string; category: string | null; is_default: boolean };
 type Member = { id: string; email: string; name: string | null; role: string; accepted_at: string | null };
+
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -51,6 +54,8 @@ export default function Settings() {
   const [sequence, setSequence] = useState<Touchpoint[]>(() => loadSequence());
   const [editingStep, setEditingStep] = useState<Touchpoint | null>(null);
   const [previewStepId, setPreviewStepId] = useState<string | null>(null);
+  const [permsMember, setPermsMember] = useState<Member | null>(null);
+
 
   useEffect(() => { saveSequence(sequence); }, [sequence]);
 
@@ -489,6 +494,17 @@ export default function Settings() {
                       {m.accepted_at ? "Active" : "Pending"}
                     </Badge>
                     {isAdmin && (
+                      <Button
+                        variant="outline" size="sm"
+                        onClick={() => setPermsMember(m)}
+                        className="h-7 gap-1"
+                        title="Edit permissions"
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5" />
+                        <span className="hidden md:inline">Permissions</span>
+                      </Button>
+                    )}
+                    {isAdmin && (
                       <Button variant="ghost" size="sm" onClick={() => removeMember(m.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
                     )}
                   </div>
@@ -497,7 +513,15 @@ export default function Settings() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        <PermissionsDialog
+          open={!!permsMember}
+          onOpenChange={(v) => { if (!v) setPermsMember(null); }}
+          member={permsMember}
+          onSaved={() => void loadAll()}
+        />
       </main>
+
     </div>
   );
 }
