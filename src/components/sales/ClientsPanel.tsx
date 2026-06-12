@@ -495,6 +495,7 @@ function AddClientDialog({ open, onOpenChange, onDone }: {
 }) {
   const [form, setForm] = useState({
     business_name: "", contact_name: "", email: "", phone: "", industry: "", location: "", notes: "",
+    client_type: "current" as ClientType,
   });
   const [saving, setSaving] = useState(false);
 
@@ -509,11 +510,12 @@ function AddClientDialog({ open, onOpenChange, onDone }: {
       industry: form.industry.trim() || null,
       location: form.location.trim() || null,
       notes: form.notes.trim() || null,
+      client_type: form.client_type,
     });
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("Contact added");
-    setForm({ business_name: "", contact_name: "", email: "", phone: "", industry: "", location: "", notes: "" });
+    setForm({ business_name: "", contact_name: "", email: "", phone: "", industry: "", location: "", notes: "", client_type: "current" });
     onOpenChange(false);
     onDone();
   };
