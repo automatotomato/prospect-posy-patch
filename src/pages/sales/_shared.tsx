@@ -49,8 +49,11 @@ export type SalesCtx = {
   selected: Set<string>;
   toggleOne: (id: string) => void;
   clearSelection: () => void;
+  selectMany: (ids: string[]) => void;
   bulkDelete: (ids: string[]) => Promise<any>;
   bulkSetStage: (ids: string[], stage: string) => Promise<any>;
+  bulkUpdate: (ids: string[], patch: Partial<Lead>) => Promise<any>;
+  bulkScheduleFollowUp: (ids: string[], days: number) => Promise<any>;
 
   // scout
   discovering: boolean;
