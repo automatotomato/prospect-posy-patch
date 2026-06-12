@@ -13,6 +13,7 @@ import {
 import { useSalesLeads, type Lead, STAGES } from "@/hooks/useSalesLeads";
 import { ScanCardDialog } from "@/components/sales/ScanCardDialog";
 import { SalesContext, BulkBar, LeadDrawer } from "./_shared";
+import { LogWinDialog } from "@/components/sales/LogWinDialog";
 import { usePermissions } from "@/hooks/usePermissions";
 
 
@@ -93,6 +94,7 @@ export default function SalesLayout() {
   const [industryFilter, setIndustryFilter] = useState<string>("all");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
+  const [winLead, setWinLead] = useState<Lead | null>(null);
   const [leadsOpen, setLeadsOpen] = useState(true);
 
   useEffect(() => { if (!user) navigate("/sales/login", { replace: true }); }, [user, navigate]);
@@ -340,9 +342,24 @@ export default function SalesLayout() {
             generating={generatingId === openLead.id}
             onCopy={() => copy(openLead)}
             copied={copiedId === openLead.id}
-            onStage={(s) => setStage(openLead, s)}
+            onStage={async (s) => {
+              await setStage(openLead, s);
+              if (s === "won") setWinLead(openLead);
+            }}
             onFollowUp={(days) => scheduleFollowUp(openLead, days)}
             onDelete={() => { removeLead(openLead.id); setOpenLead(null); }}
+            onLogWin={() => setWinLead(openLead)}
+          />
+        )}
+
+        {winLead && (
+          <LogWinDialog
+            open={!!winLead}
+            onOpenChange={(v) => !v && setWinLead(null)}
+            leadId={winLead.id}
+            leadName={winLead.business_name}
+            ownerId={winLead.assigned_to}
+            onLogged={() => load()}
           />
         )}
 
