@@ -63,6 +63,7 @@ export function ClientsPanel() {
   const [query, setQuery] = useState("");
   const [uploadOpen, setUploadOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [industryFilter, setIndustryFilter] = useState<string>("all");
 
   const load = async () => {
     setLoading(true);
