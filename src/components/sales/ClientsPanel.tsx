@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Upload, Plus, Trash2, RefreshCw, Search, Users, Mail, Phone } from "lucide-react";
+import { Upload, Plus, Trash2, RefreshCw, Search, Users, Mail, Phone, Pencil, Ban, MailX } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 
@@ -64,6 +65,10 @@ export function ClientsPanel() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [industryFilter, setIndustryFilter] = useState<string>("all");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [editOpen, setEditOpen] = useState(false);
+  const toggleOne = (id: string) => setSelected((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const clearSelection = () => setSelected(new Set());
 
   const load = async () => {
     setLoading(true);
@@ -93,6 +98,26 @@ export function ClientsPanel() {
     if (error) return toast.error(error.message);
     toast.success("Contact removed");
     setClients((prev) => prev.filter((c) => c.id !== id));
+    setSelected((p) => { const n = new Set(p); n.delete(id); return n; });
+  };
+
+  const ids = Array.from(selected);
+  const bulkDelete = async () => {
+    if (!ids.length) return;
+    if (!confirm(`Delete ${ids.length} contact${ids.length > 1 ? "s" : ""}? This cannot be undone.`)) return;
+    const { error } = await supabase.from("clients").delete().in("id", ids);
+    if (error) return toast.error(error.message);
+    setClients((p) => p.filter((c) => !ids.includes(c.id)));
+    clearSelection();
+    toast.success(`Deleted ${ids.length} contacts`);
+  };
+  const bulkPatch = async (patch: Partial<Client>) => {
+    if (!ids.length) return;
+    const { data, error } = await supabase.from("clients").update(patch).in("id", ids).select();
+    if (error) return toast.error(error.message);
+    const map = new Map((data as Client[]).map((d) => [d.id, d]));
+    setClients((p) => p.map((c) => map.get(c.id) || c));
+    toast.success(`Updated ${ids.length} contact${ids.length > 1 ? "s" : ""}`);
   };
 
   return (
@@ -165,34 +190,87 @@ export function ClientsPanel() {
             </p>
           </div>
         ) : (
-          <ul className="divide-y divide-border">
-            {filtered.map((c) => (
-              <li key={c.id} className="px-4 md:px-5 py-3 flex items-center gap-3 hover:bg-muted/30">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-medium text-sm truncate">{c.business_name}</span>
-                    {c.industry && <Badge variant="secondary" className="text-[10px]">{c.industry}</Badge>}
-                    {c.do_not_contact && <Badge variant="destructive" className="text-[10px]">DNC</Badge>}
-                    {c.unsubscribed && <Badge variant="outline" className="text-[10px]">Unsubscribed</Badge>}
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-0.5 flex flex-wrap gap-x-3 gap-y-1">
-                    {c.contact_name && <span>{c.contact_name}</span>}
-                    {c.email && <span className="flex items-center gap-1"><Mail className="w-3 h-3" />{c.email}</span>}
-                    {c.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{c.phone}</span>}
-                    {c.location && <span>{c.location}</span>}
-                  </div>
-                </div>
-                <Button variant="ghost" size="icon" onClick={() => remove(c.id)} className="shrink-0">
-                  <Trash2 className="w-4 h-4 text-muted-foreground" />
-                </Button>
-              </li>
-            ))}
-          </ul>
+          <>
+            <div className="px-4 md:px-5 py-2.5 border-b border-border flex items-center gap-3 bg-muted/20 text-xs">
+              <Checkbox
+                checked={filtered.length > 0 && filtered.every((c) => selected.has(c.id))
+                  ? true
+                  : filtered.some((c) => selected.has(c.id)) ? "indeterminate" : false}
+                onCheckedChange={(v) => {
+                  if (v) setSelected(new Set([...Array.from(selected), ...filtered.map((c) => c.id)]));
+                  else clearSelection();
+                }}
+                aria-label="Select all"
+              />
+              <span className="text-muted-foreground">
+                {selected.size > 0 ? `${selected.size} selected` : `Select all ${filtered.length}`}
+              </span>
+            </div>
+            <ul className="divide-y divide-border">
+              {filtered.map((c) => {
+                const isSelected = selected.has(c.id);
+                return (
+                  <li key={c.id} className={`px-4 md:px-5 py-3 flex items-center gap-3 hover:bg-muted/30 ${isSelected ? "bg-primary/5" : ""}`}>
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={() => toggleOne(c.id)}
+                      aria-label="Select contact"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-sm truncate">{c.business_name}</span>
+                        {c.industry && <Badge variant="secondary" className="text-[10px]">{c.industry}</Badge>}
+                        {c.do_not_contact && <Badge variant="destructive" className="text-[10px]">DNC</Badge>}
+                        {c.unsubscribed && <Badge variant="outline" className="text-[10px]">Unsubscribed</Badge>}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5 flex flex-wrap gap-x-3 gap-y-1">
+                        {c.contact_name && <span>{c.contact_name}</span>}
+                        {c.email && <span className="flex items-center gap-1"><Mail className="w-3 h-3" />{c.email}</span>}
+                        {c.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{c.phone}</span>}
+                        {c.location && <span>{c.location}</span>}
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="icon" onClick={() => remove(c.id)} className="shrink-0">
+                      <Trash2 className="w-4 h-4 text-muted-foreground" />
+                    </Button>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
         )}
       </div>
 
+      {selected.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card border border-border rounded-full shadow-2xl shadow-primary/20 px-4 py-2.5 flex items-center gap-2 md:gap-3 flex-wrap max-w-[95vw]">
+          <Badge variant="secondary" className="font-semibold">{selected.size} selected</Badge>
+          <button onClick={clearSelection} className="text-muted-foreground hover:text-foreground" aria-label="Clear">×</button>
+          <div className="h-5 w-px bg-border" />
+          <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => setEditOpen(true)}>
+            <Pencil className="w-3.5 h-3.5" />Edit
+          </Button>
+          <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => bulkPatch({ do_not_contact: true })}>
+            <Ban className="w-3.5 h-3.5" />Mark DNC
+          </Button>
+          <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => bulkPatch({ unsubscribed: true })}>
+            <MailX className="w-3.5 h-3.5" />Unsubscribe
+          </Button>
+          <Button size="sm" variant="destructive" className="h-8 gap-1" onClick={bulkDelete}>
+            <Trash2 className="w-3.5 h-3.5" />Delete
+          </Button>
+        </div>
+      )}
+
+      <BulkEditClientsDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        count={ids.length}
+        onSave={async (patch) => { await bulkPatch(patch); setEditOpen(false); }}
+      />
+
       <UploadCsvDialog open={uploadOpen} onOpenChange={setUploadOpen} onDone={load} />
       <AddClientDialog open={addOpen} onOpenChange={setAddOpen} onDone={load} />
+
     </div>
   );
 }
@@ -443,6 +521,81 @@ function AddClientDialog({ open, onOpenChange, onDone }: {
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function BulkEditClientsDialog({
+  open, onOpenChange, count, onSave,
+}: {
+  open: boolean; onOpenChange: (v: boolean) => void; count: number;
+  onSave: (patch: Partial<Client>) => Promise<void> | void;
+}) {
+  const [industry, setIndustry] = useState("");
+  const [location, setLocation] = useState("");
+  const [dnc, setDnc] = useState<string>("");
+  const [unsub, setUnsub] = useState<string>("");
+  const [saving, setSaving] = useState(false);
+
+  const reset = () => { setIndustry(""); setLocation(""); setDnc(""); setUnsub(""); };
+
+  const submit = async () => {
+    const patch: Partial<Client> = {};
+    if (industry.trim()) patch.industry = industry.trim();
+    if (location.trim()) patch.location = location.trim();
+    if (dnc) patch.do_not_contact = dnc === "true";
+    if (unsub) patch.unsubscribed = unsub === "true";
+    if (Object.keys(patch).length === 0) { onOpenChange(false); return; }
+    setSaving(true);
+    await onSave(patch);
+    setSaving(false);
+    reset();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) reset(); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit {count} contact{count > 1 ? "s" : ""}</DialogTitle>
+          <DialogDescription>Only fields you fill in will be updated.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label className="text-xs">Industry</Label>
+            <Input value={industry} onChange={(e) => setIndustry(e.target.value)} placeholder="e.g. Plumbing" className="bg-secondary border-border" />
+          </div>
+          <div>
+            <Label className="text-xs">Location</Label>
+            <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="City, ST" className="bg-secondary border-border" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">Do not contact</Label>
+              <Select value={dnc} onValueChange={setDnc}>
+                <SelectTrigger className="bg-secondary border-border"><SelectValue placeholder="Keep" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="true">Mark DNC</SelectItem>
+                  <SelectItem value="false">Clear DNC</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Unsubscribed</Label>
+              <Select value={unsub} onValueChange={setUnsub}>
+                <SelectTrigger className="bg-secondary border-border"><SelectValue placeholder="Keep" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="true">Mark unsubscribed</SelectItem>
+                  <SelectItem value="false">Re-subscribe</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={submit} disabled={saving}>{saving ? "Saving…" : `Update ${count}`}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
