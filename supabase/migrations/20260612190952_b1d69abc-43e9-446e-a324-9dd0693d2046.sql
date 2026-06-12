@@ -1,0 +1,2 @@
+ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS client_type text NOT NULL DEFAULT 'current' CHECK (client_type IN ('current','previous','prospect'));
+CREATE INDEX IF NOT EXISTS idx_clients_client_type ON public.clients(client_type);

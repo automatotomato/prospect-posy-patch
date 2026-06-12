@@ -11,6 +11,8 @@ import { Upload, Plus, Trash2, RefreshCw, Search, Users, Mail, Phone, Pencil, Ba
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 
+export type ClientType = "current" | "previous" | "prospect";
+
 export type Client = {
   id: string;
   business_name: string;
@@ -20,6 +22,7 @@ export type Client = {
   industry: string | null;
   location: string | null;
   tags: string[] | null;
+  client_type: ClientType;
   do_not_contact: boolean;
   unsubscribed: boolean;
   created_at: string;
@@ -28,8 +31,26 @@ export type Client = {
 const REQUIRED_HEADERS = ["business_name"];
 const KNOWN_HEADERS = [
   "business_name", "contact_name", "email", "phone",
-  "website", "industry", "location", "notes", "tags",
+  "website", "industry", "location", "notes", "tags", "client_type",
 ];
+
+export const TYPE_LABEL: Record<ClientType, string> = {
+  current: "Current customer",
+  previous: "Previous customer",
+  prospect: "Prospect",
+};
+export const TYPE_BADGE: Record<ClientType, string> = {
+  current: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+  previous: "bg-amber-500/10 text-amber-400 border-amber-500/30",
+  prospect: "bg-sky-500/10 text-sky-400 border-sky-500/30",
+};
+
+function normalizeClientType(v?: string): ClientType {
+  const s = (v || "").toLowerCase().trim();
+  if (s === "previous" || s === "past" || s === "former") return "previous";
+  if (s === "prospect" || s === "lead" || s === "new") return "prospect";
+  return "current";
+}
 
 function parseCSV(text: string): { rows: Record<string, string>[]; headers: string[] } {
   const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
@@ -65,6 +86,7 @@ export function ClientsPanel() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [industryFilter, setIndustryFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editOpen, setEditOpen] = useState(false);
   const toggleOne = (id: string) => setSelected((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -87,6 +109,7 @@ export function ClientsPanel() {
 
   const filtered = clients.filter((c) => {
     if (industryFilter !== "all" && (c.industry || "") !== industryFilter) return false;
+    if (typeFilter !== "all" && c.client_type !== typeFilter) return false;
     if (!query.trim()) return true;
     const q = query.toLowerCase();
     return [c.business_name, c.contact_name, c.email, c.phone, c.industry, c.location]
@@ -160,8 +183,19 @@ export function ClientsPanel() {
               className="pl-9 bg-secondary border-border h-10"
             />
           </div>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-full md:w-[200px] h-10 bg-secondary border-border">
+              <SelectValue placeholder="Contact type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All types</SelectItem>
+              <SelectItem value="current">Current customers</SelectItem>
+              <SelectItem value="previous">Previous customers</SelectItem>
+              <SelectItem value="prospect">Prospects</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={industryFilter} onValueChange={setIndustryFilter}>
-            <SelectTrigger className="w-full md:w-[220px] h-10 bg-secondary border-border">
+            <SelectTrigger className="w-full md:w-[200px] h-10 bg-secondary border-border">
               <SelectValue placeholder="Industry" />
             </SelectTrigger>
             <SelectContent>
@@ -171,8 +205,8 @@ export function ClientsPanel() {
               ))}
             </SelectContent>
           </Select>
-          {industryFilter !== "all" && (
-            <button onClick={() => setIndustryFilter("all")} className="text-xs text-muted-foreground hover:text-foreground underline self-center">
+          {(industryFilter !== "all" || typeFilter !== "all") && (
+            <button onClick={() => { setIndustryFilter("all"); setTypeFilter("all"); }} className="text-xs text-muted-foreground hover:text-foreground underline self-center">
               Clear
             </button>
           )}
@@ -219,6 +253,9 @@ export function ClientsPanel() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium text-sm truncate">{c.business_name}</span>
+                        <Badge variant="outline" className={`text-[10px] ${TYPE_BADGE[c.client_type] || TYPE_BADGE.current}`}>
+                          {TYPE_LABEL[c.client_type] || "Current customer"}
+                        </Badge>
                         {c.industry && <Badge variant="secondary" className="text-[10px]">{c.industry}</Badge>}
                         {c.do_not_contact && <Badge variant="destructive" className="text-[10px]">DNC</Badge>}
                         {c.unsubscribed && <Badge variant="outline" className="text-[10px]">Unsubscribed</Badge>}
@@ -319,6 +356,7 @@ function UploadCsvDialog({ open, onOpenChange, onDone }: {
         location: r.location?.trim() || null,
         notes: r.notes?.trim() || null,
         tags: r.tags ? r.tags.split(/[;|]/).map((t) => t.trim()).filter(Boolean) : null,
+        client_type: normalizeClientType(r.client_type),
       }));
 
     if (payload.length === 0) return toast.error("No valid rows (business_name required)");
@@ -457,6 +495,7 @@ function AddClientDialog({ open, onOpenChange, onDone }: {
 }) {
   const [form, setForm] = useState({
     business_name: "", contact_name: "", email: "", phone: "", industry: "", location: "", notes: "",
+    client_type: "current" as ClientType,
   });
   const [saving, setSaving] = useState(false);
 
@@ -471,11 +510,12 @@ function AddClientDialog({ open, onOpenChange, onDone }: {
       industry: form.industry.trim() || null,
       location: form.location.trim() || null,
       notes: form.notes.trim() || null,
+      client_type: form.client_type,
     });
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("Contact added");
-    setForm({ business_name: "", contact_name: "", email: "", phone: "", industry: "", location: "", notes: "" });
+    setForm({ business_name: "", contact_name: "", email: "", phone: "", industry: "", location: "", notes: "", client_type: "current" });
     onOpenChange(false);
     onDone();
   };
@@ -513,6 +553,17 @@ function AddClientDialog({ open, onOpenChange, onDone }: {
               <Input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} className="bg-secondary border-border" />
             </div>
             <div className="col-span-2">
+              <Label className="text-xs">Contact type</Label>
+              <Select value={form.client_type} onValueChange={(v) => setForm({ ...form, client_type: v as ClientType })}>
+                <SelectTrigger className="bg-secondary border-border"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="current">Current customer</SelectItem>
+                  <SelectItem value="previous">Previous customer</SelectItem>
+                  <SelectItem value="prospect">Prospect</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-2">
               <Label className="text-xs">Notes</Label>
               <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="bg-secondary border-border" />
             </div>
@@ -535,16 +586,18 @@ function BulkEditClientsDialog({
 }) {
   const [industry, setIndustry] = useState("");
   const [location, setLocation] = useState("");
+  const [clientType, setClientType] = useState<string>("");
   const [dnc, setDnc] = useState<string>("");
   const [unsub, setUnsub] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
-  const reset = () => { setIndustry(""); setLocation(""); setDnc(""); setUnsub(""); };
+  const reset = () => { setIndustry(""); setLocation(""); setClientType(""); setDnc(""); setUnsub(""); };
 
   const submit = async () => {
     const patch: Partial<Client> = {};
     if (industry.trim()) patch.industry = industry.trim();
     if (location.trim()) patch.location = location.trim();
+    if (clientType) patch.client_type = clientType as ClientType;
     if (dnc) patch.do_not_contact = dnc === "true";
     if (unsub) patch.unsubscribed = unsub === "true";
     if (Object.keys(patch).length === 0) { onOpenChange(false); return; }
@@ -562,6 +615,17 @@ function BulkEditClientsDialog({
           <DialogDescription>Only fields you fill in will be updated.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
+          <div>
+            <Label className="text-xs">Contact type</Label>
+            <Select value={clientType} onValueChange={setClientType}>
+              <SelectTrigger className="bg-secondary border-border"><SelectValue placeholder="Keep" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="current">Current customer</SelectItem>
+                <SelectItem value="previous">Previous customer</SelectItem>
+                <SelectItem value="prospect">Prospect</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div>
             <Label className="text-xs">Industry</Label>
             <Input value={industry} onChange={(e) => setIndustry(e.target.value)} placeholder="e.g. Plumbing" className="bg-secondary border-border" />
