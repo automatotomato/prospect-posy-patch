@@ -11,6 +11,8 @@ import { Upload, Plus, Trash2, RefreshCw, Search, Users, Mail, Phone, Pencil, Ba
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 
+export type ClientType = "current" | "previous" | "prospect";
+
 export type Client = {
   id: string;
   business_name: string;
@@ -20,6 +22,7 @@ export type Client = {
   industry: string | null;
   location: string | null;
   tags: string[] | null;
+  client_type: ClientType;
   do_not_contact: boolean;
   unsubscribed: boolean;
   created_at: string;
@@ -28,8 +31,26 @@ export type Client = {
 const REQUIRED_HEADERS = ["business_name"];
 const KNOWN_HEADERS = [
   "business_name", "contact_name", "email", "phone",
-  "website", "industry", "location", "notes", "tags",
+  "website", "industry", "location", "notes", "tags", "client_type",
 ];
+
+export const TYPE_LABEL: Record<ClientType, string> = {
+  current: "Current customer",
+  previous: "Previous customer",
+  prospect: "Prospect",
+};
+export const TYPE_BADGE: Record<ClientType, string> = {
+  current: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+  previous: "bg-amber-500/10 text-amber-400 border-amber-500/30",
+  prospect: "bg-sky-500/10 text-sky-400 border-sky-500/30",
+};
+
+function normalizeClientType(v?: string): ClientType {
+  const s = (v || "").toLowerCase().trim();
+  if (s === "previous" || s === "past" || s === "former") return "previous";
+  if (s === "prospect" || s === "lead" || s === "new") return "prospect";
+  return "current";
+}
 
 function parseCSV(text: string): { rows: Record<string, string>[]; headers: string[] } {
   const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
