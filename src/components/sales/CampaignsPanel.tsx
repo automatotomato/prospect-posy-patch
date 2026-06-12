@@ -49,6 +49,8 @@ export function CampaignsPanel() {
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const [preset, setPreset] = useState<{ name: string; description: string; clientIds: string[] } | null>(null);
 
   const load = async () => {
     setLoading(true);
