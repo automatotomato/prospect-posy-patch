@@ -586,16 +586,18 @@ function BulkEditClientsDialog({
 }) {
   const [industry, setIndustry] = useState("");
   const [location, setLocation] = useState("");
+  const [clientType, setClientType] = useState<string>("");
   const [dnc, setDnc] = useState<string>("");
   const [unsub, setUnsub] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
-  const reset = () => { setIndustry(""); setLocation(""); setDnc(""); setUnsub(""); };
+  const reset = () => { setIndustry(""); setLocation(""); setClientType(""); setDnc(""); setUnsub(""); };
 
   const submit = async () => {
     const patch: Partial<Client> = {};
     if (industry.trim()) patch.industry = industry.trim();
     if (location.trim()) patch.location = location.trim();
+    if (clientType) patch.client_type = clientType as ClientType;
     if (dnc) patch.do_not_contact = dnc === "true";
     if (unsub) patch.unsubscribed = unsub === "true";
     if (Object.keys(patch).length === 0) { onOpenChange(false); return; }
@@ -613,6 +615,17 @@ function BulkEditClientsDialog({
           <DialogDescription>Only fields you fill in will be updated.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
+          <div>
+            <Label className="text-xs">Contact type</Label>
+            <Select value={clientType} onValueChange={setClientType}>
+              <SelectTrigger className="bg-secondary border-border"><SelectValue placeholder="Keep" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="current">Current customer</SelectItem>
+                <SelectItem value="previous">Previous customer</SelectItem>
+                <SelectItem value="prospect">Prospect</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div>
             <Label className="text-xs">Industry</Label>
             <Input value={industry} onChange={(e) => setIndustry(e.target.value)} placeholder="e.g. Plumbing" className="bg-secondary border-border" />
