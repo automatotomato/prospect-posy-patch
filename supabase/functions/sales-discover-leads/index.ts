@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
     for (const p of places) {
       const name = p.displayName?.text || "Unknown";
       const types = (p.types || []).join(" ");
-      if (isExcluded(name) || isExcluded(types) || isExcluded(vertical)) continue;
+      if (isBlocked(name) || isBlocked(types) || isExcluded(name) || isExcluded(types)) continue;
 
       const website = p.websiteUri || null;
       const phone = p.nationalPhoneNumber || null;
