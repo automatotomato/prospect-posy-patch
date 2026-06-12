@@ -35,9 +35,11 @@ export default function Settings() {
 
   // Discovery
   const [verticals, setVerticals] = useState<string[]>([]);
+  const [excludedVerticals, setExcludedVerticals] = useState<string[]>([]);
   const [locations, setLocations] = useState<string[]>([]);
   const [targetCount, setTargetCount] = useState(50);
   const [newVertical, setNewVertical] = useState("");
+  const [newExcluded, setNewExcluded] = useState("");
   const [newLocation, setNewLocation] = useState("");
 
   // Templates
