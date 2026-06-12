@@ -391,29 +391,123 @@ function Meta({ label, value }: { label: string; value: React.ReactNode }) {
 
 /* ============ Bulk action bar ============ */
 export function BulkBar() {
-  const { selected, clearSelection, bulkDelete, bulkSetStage } = useSales();
+  const { selected, clearSelection, bulkDelete, bulkSetStage, bulkUpdate, bulkScheduleFollowUp } = useSales();
+  const [editOpen, setEditOpen] = useState(false);
   if (selected.size === 0) return null;
   const ids = Array.from(selected);
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card border border-border rounded-full shadow-2xl shadow-primary/20 px-4 py-2.5 flex items-center gap-3">
-      <Badge variant="secondary" className="font-semibold">{selected.size} selected</Badge>
-      <button onClick={clearSelection} className="text-muted-foreground hover:text-foreground" aria-label="Clear">×</button>
-      <div className="h-5 w-px bg-border" />
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button size="sm" variant="outline" className="h-8">Move stage <MoreVertical className="w-3 h-3 ml-1" /></Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          <DropdownMenuLabel>Set stage for {selected.size}</DropdownMenuLabel>
-          {STAGES.map((s) => (
-            <DropdownMenuItem key={s.id} onClick={() => bulkSetStage(ids, s.id)}>{s.label}</DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <Button size="sm" variant="destructive" className="h-8 gap-1" onClick={() => bulkDelete(ids)}>
-        <Trash2 className="w-3.5 h-3.5" />Delete
-      </Button>
-    </div>
+    <>
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card border border-border rounded-full shadow-2xl shadow-primary/20 px-4 py-2.5 flex items-center gap-2 md:gap-3 flex-wrap max-w-[95vw]">
+        <Badge variant="secondary" className="font-semibold">{selected.size} selected</Badge>
+        <button onClick={clearSelection} className="text-muted-foreground hover:text-foreground" aria-label="Clear">×</button>
+        <div className="h-5 w-px bg-border" />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm" variant="outline" className="h-8">Stage <MoreVertical className="w-3 h-3 ml-1" /></Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuLabel>Move {selected.size} to…</DropdownMenuLabel>
+            {STAGES.map((s) => (
+              <DropdownMenuItem key={s.id} onClick={() => bulkSetStage(ids, s.id)}>{s.label}</DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm" variant="outline" className="h-8 gap-1"><Clock className="w-3.5 h-3.5" />Follow-up</Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuLabel>Schedule for {selected.size}</DropdownMenuLabel>
+            {[1, 3, 7, 14, 30].map((d) => (
+              <DropdownMenuItem key={d} onClick={() => bulkScheduleFollowUp(ids, d)}>In {d} day{d > 1 ? "s" : ""}</DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => bulkUpdate(ids, { follow_up_at: null })}>Clear follow-up</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => setEditOpen(true)}>
+          <Pencil className="w-3.5 h-3.5" />Edit
+        </Button>
+        <Button size="sm" variant="destructive" className="h-8 gap-1" onClick={() => bulkDelete(ids)}>
+          <Trash2 className="w-3.5 h-3.5" />Delete
+        </Button>
+      </div>
+
+      <BulkEditDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        count={ids.length}
+        onSave={async (patch) => { await bulkUpdate(ids, patch); setEditOpen(false); }}
+      />
+    </>
+  );
+}
+
+function BulkEditDialog({
+  open, onOpenChange, count, onSave,
+}: {
+  open: boolean; onOpenChange: (v: boolean) => void; count: number;
+  onSave: (patch: Partial<Lead>) => Promise<void> | void;
+}) {
+  const [industry, setIndustry] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [stage, setStage] = useState<string>("");
+  const [saving, setSaving] = useState(false);
+
+  const reset = () => { setIndustry(""); setCity(""); setState(""); setStage(""); };
+
+  const submit = async () => {
+    const patch: Partial<Lead> = {};
+    if (industry.trim()) patch.industry = industry.trim();
+    if (city.trim()) patch.city = city.trim();
+    if (state.trim()) patch.state = state.trim().toUpperCase();
+    if (stage) patch.stage = stage;
+    if (Object.keys(patch).length === 0) { onOpenChange(false); return; }
+    setSaving(true);
+    await onSave(patch);
+    setSaving(false);
+    reset();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) reset(); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit {count} lead{count > 1 ? "s" : ""}</DialogTitle>
+          <DialogDescription>Only fields you fill in will be updated. Leave blank to keep existing values.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label className="text-xs">Industry</Label>
+            <Input value={industry} onChange={(e) => setIndustry(e.target.value)} placeholder="e.g. Towing" className="bg-secondary border-border" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">City</Label>
+              <Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="e.g. Las Vegas" className="bg-secondary border-border" />
+            </div>
+            <div>
+              <Label className="text-xs">State</Label>
+              <Input value={state} onChange={(e) => setState(e.target.value)} placeholder="NV" maxLength={2} className="bg-secondary border-border" />
+            </div>
+          </div>
+          <div>
+            <Label className="text-xs">Stage</Label>
+            <Select value={stage} onValueChange={setStage}>
+              <SelectTrigger className="bg-secondary border-border"><SelectValue placeholder="Keep current" /></SelectTrigger>
+              <SelectContent>
+                {STAGES.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={submit} disabled={saving}>{saving ? "Saving…" : `Update ${count}`}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
