@@ -1,13 +1,16 @@
-import { createContext, useContext } from "react";
+import { createContext, useContext, useState } from "react";
 import {
   Activity as ActivityIcon, Building2, Check, ChevronRight, Clock, Copy,
-  ListChecks, MapPin, MoreVertical, RefreshCw, Send, Sparkles, Trash2, TrendingUp,
+  ListChecks, MapPin, MoreVertical, Pencil, RefreshCw, Send, Sparkles, Trash2, TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import {
-  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { STAGES, type Lead } from "@/hooks/useSalesLeads";
