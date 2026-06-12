@@ -45,7 +45,9 @@ const App = () => (
               <Route path="activity" element={<ActivityPage />} />
               <Route path="followups" element={<Followups />} />
               <Route path="campaigns" element={<Campaigns />} />
+              <Route path="approvals" element={<Approvals />} />
               <Route path="how-it-works" element={<HowItWorks />} />
+
             </Route>
             <Route path="/sales/settings" element={<ProtectedRoute><SalesSettings /></ProtectedRoute>} />
             <Route path="/team" element={<AdminRoute><Team /></AdminRoute>} />
