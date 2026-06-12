@@ -269,7 +269,9 @@ export default function SalesLayout() {
     if (pathname.startsWith("/sales/activity")) return "Activity";
     if (pathname.startsWith("/sales/followups")) return "Follow-ups";
     if (pathname.startsWith("/sales/campaigns")) return "Campaigns";
+    if (pathname.startsWith("/sales/approvals")) return "Email Approvals";
     if (pathname.startsWith("/sales/how-it-works")) return "How It Works";
+
     return "Sales";
   })();
 
