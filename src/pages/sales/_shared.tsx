@@ -317,12 +317,28 @@ function DrawerBody({
   onLogWin?: () => void;
   activities: { id: string; type: string; note: string | null; created_at: string }[];
 }) {
-  const { can, bulkAssign, setLeads } = useSales();
+  const { can, bulkAssign, setLeads, load } = useSales();
   const [requesting, setRequesting] = useState(false);
+  const [sending, setSending] = useState(false);
 
   const onAssign = async (userId: string | null) => {
     await bulkAssign([lead.id], userId);
     setLeads((p) => p.map((l) => (l.id === lead.id ? { ...l, assigned_to: userId } : l)));
+  };
+
+  const onSendNow = async () => {
+    if (!lead.email || !lead.email_body) return;
+    const { toast } = await import("sonner");
+    const { supabase } = await import("@/integrations/supabase/client");
+    setSending(true);
+    const { data, error } = await supabase.functions.invoke("sales-send-email", {
+      body: { leadIds: [lead.id] },
+    });
+    setSending(false);
+    if (error) return toast.error(error.message);
+    const failed = (data?.results || []).find((r: any) => !r.ok);
+    if (data?.sent > 0) { toast.success(`Email sent to ${lead.email}`); await load(); }
+    else toast.error(failed?.reason || "Failed to send");
   };
 
   const onRequestApproval = async () => {
