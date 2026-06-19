@@ -346,6 +346,13 @@ export function ClientsPanel() {
           <Badge variant="secondary" className="font-semibold">{selected.size} selected</Badge>
           <button onClick={clearSelection} className="text-muted-foreground hover:text-foreground" aria-label="Clear">×</button>
           <div className="h-5 w-px bg-border" />
+          <Button
+            size="sm"
+            className="h-8 gap-1"
+            onClick={() => sendToPipeline(clients.filter((c) => selected.has(c.id)))}
+          >
+            <Send className="w-3.5 h-3.5" />Send to pipeline
+          </Button>
           <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => setEditOpen(true)}>
             <Pencil className="w-3.5 h-3.5" />Edit
           </Button>
