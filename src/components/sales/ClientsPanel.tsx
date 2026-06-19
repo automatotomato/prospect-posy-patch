@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Upload, Plus, Trash2, RefreshCw, Search, Users, Mail, Phone, Pencil, Ban, MailX } from "lucide-react";
+import { Upload, Plus, Trash2, RefreshCw, Search, Users, Mail, Phone, Pencil, Ban, MailX, Send } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 
