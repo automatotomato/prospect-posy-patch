@@ -143,6 +143,58 @@ export function ClientsPanel() {
     toast.success(`Updated ${ids.length} contact${ids.length > 1 ? "s" : ""}`);
   };
 
+  const sendToPipeline = async (targets: Client[]) => {
+    const withEmail = targets.filter((c) => c.email && !c.do_not_contact && !c.unsubscribed);
+    const skipped = targets.length - withEmail.length;
+    if (withEmail.length === 0) {
+      return toast.error("No eligible contacts — each lead needs an email and must not be DNC/unsubscribed.");
+    }
+    const { data: userResp } = await supabase.auth.getUser();
+    const ownerId = userResp.user?.id;
+    if (!ownerId) return toast.error("Not signed in");
+
+    const emails = withEmail.map((c) => c.email!.toLowerCase());
+    const { data: existing } = await supabase
+      .from("sales_leads")
+      .select("email")
+      .in("email", emails);
+    const existingSet = new Set((existing || []).map((r: any) => (r.email || "").toLowerCase()));
+
+    const rows = withEmail
+      .filter((c) => !existingSet.has(c.email!.toLowerCase()))
+      .map((c) => {
+        const [city, state] = (c.location || "").split(",").map((s) => s.trim());
+        return {
+          owner_id: ownerId,
+          business_name: c.business_name,
+          email: c.email,
+          phone: c.phone,
+          city: city || null,
+          state: state || null,
+          industry: c.industry,
+          source: "my_contacts",
+          status: "new",
+          stage: "new",
+        };
+      });
+
+    const duplicates = withEmail.length - rows.length;
+    if (rows.length === 0) {
+      return toast.message("Already in pipeline", {
+        description: `${duplicates} contact${duplicates > 1 ? "s are" : " is"} already a lead.`,
+      });
+    }
+
+    const { error } = await supabase.from("sales_leads").insert(rows);
+    if (error) return toast.error(error.message);
+
+    const parts = [`${rows.length} sent to pipeline`];
+    if (duplicates) parts.push(`${duplicates} already there`);
+    if (skipped) parts.push(`${skipped} skipped (no email / DNC)`);
+    toast.success(parts.join(" • "));
+    clearSelection();
+  };
+
   return (
     <div className="space-y-4">
       <div className="bg-card border border-border rounded-2xl p-4 md:p-5">
