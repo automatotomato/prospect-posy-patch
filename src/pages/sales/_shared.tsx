@@ -441,6 +441,11 @@ function DrawerBody({
                 <Send className="w-3 h-3 mr-1" />{requesting ? "Submitting…" : "Request approval"}
               </Button>
             )}
+            {lead.email_body && can("send_emails") && lead.email && (
+              <Button size="sm" onClick={onSendNow} disabled={sending}>
+                <Send className="w-3 h-3 mr-1" />{sending ? "Sending…" : "Send now"}
+              </Button>
+            )}
           </div>
         </div>
         {lead.email_body ? (
