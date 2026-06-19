@@ -41,9 +41,9 @@ serve(async (req) => {
     if (!Array.isArray(leadIds) || leadIds.length === 0)
       return json(400, { error: "leadIds required" });
 
-    // Check sender domain once
+    // Check sender domain (non-blocking — restricted "sending only" keys can't read /domains)
     const sender = await verifySenderDomain();
-    if (!sender.ok)
+    if (!sender.ok && sender.error !== "resend_401" && sender.error !== "resend_400")
       return json(412, { error: sender.message, code: "sender_domain_not_verified", sender });
 
     const supabase = createClient(SUPABASE_URL, SERVICE);
