@@ -317,12 +317,28 @@ function DrawerBody({
   onLogWin?: () => void;
   activities: { id: string; type: string; note: string | null; created_at: string }[];
 }) {
-  const { can, bulkAssign, setLeads } = useSales();
+  const { can, bulkAssign, setLeads, load } = useSales();
   const [requesting, setRequesting] = useState(false);
+  const [sending, setSending] = useState(false);
 
   const onAssign = async (userId: string | null) => {
     await bulkAssign([lead.id], userId);
     setLeads((p) => p.map((l) => (l.id === lead.id ? { ...l, assigned_to: userId } : l)));
+  };
+
+  const onSendNow = async () => {
+    if (!lead.email || !lead.email_body) return;
+    const { toast } = await import("sonner");
+    const { supabase } = await import("@/integrations/supabase/client");
+    setSending(true);
+    const { data, error } = await supabase.functions.invoke("sales-send-email", {
+      body: { leadIds: [lead.id] },
+    });
+    setSending(false);
+    if (error) return toast.error(error.message);
+    const failed = (data?.results || []).find((r: any) => !r.ok);
+    if (data?.sent > 0) { toast.success(`Email sent to ${lead.email}`); await load(); }
+    else toast.error(failed?.reason || "Failed to send");
   };
 
   const onRequestApproval = async () => {
@@ -425,6 +441,11 @@ function DrawerBody({
                 <Send className="w-3 h-3 mr-1" />{requesting ? "Submitting…" : "Request approval"}
               </Button>
             )}
+            {lead.email_body && can("send_emails") && lead.email && (
+              <Button size="sm" onClick={onSendNow} disabled={sending}>
+                <Send className="w-3 h-3 mr-1" />{sending ? "Sending…" : "Send now"}
+              </Button>
+            )}
           </div>
         </div>
         {lead.email_body ? (
@@ -478,17 +499,45 @@ function Meta({ label, value }: { label: string; value: React.ReactNode }) {
 
 /* ============ Bulk action bar ============ */
 export function BulkBar() {
-  const { selected, clearSelection, bulkDelete, bulkSetStage, bulkUpdate, bulkScheduleFollowUp, bulkAssign, can } = useSales();
+  const { selected, clearSelection, bulkDelete, bulkSetStage, bulkUpdate, bulkScheduleFollowUp, bulkAssign, can, leads, load } = useSales();
   const [editOpen, setEditOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
+  const [sending, setSending] = useState(false);
   if (selected.size === 0) return null;
   const ids = Array.from(selected);
+  const selectedLeads = leads.filter((l) => selected.has(l.id));
+  const sendableIds = selectedLeads.filter((l) => l.email && l.email_subject && l.email_body).map((l) => l.id);
+
+  const onBulkSend = async () => {
+    if (sendableIds.length === 0) {
+      const { toast } = await import("sonner");
+      toast.error("None of the selected leads have a drafted email + valid email address");
+      return;
+    }
+    const skipped = ids.length - sendableIds.length;
+    if (!confirm(`Send email to ${sendableIds.length} lead${sendableIds.length > 1 ? "s" : ""}?${skipped ? ` (${skipped} skipped — missing draft or email)` : ""}`)) return;
+    const { toast } = await import("sonner");
+    const { supabase } = await import("@/integrations/supabase/client");
+    setSending(true);
+    const { data, error } = await supabase.functions.invoke("sales-send-email", { body: { leadIds: sendableIds } });
+    setSending(false);
+    if (error) return toast.error(error.message);
+    toast.success(`Sent ${data?.sent || 0} of ${data?.total || 0} emails`);
+    clearSelection();
+    await load();
+  };
+
   return (
     <>
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card border border-border rounded-full shadow-2xl shadow-primary/20 px-4 py-2.5 flex items-center gap-2 md:gap-3 flex-wrap max-w-[95vw]">
         <Badge variant="secondary" className="font-semibold">{selected.size} selected</Badge>
         <button onClick={clearSelection} className="text-muted-foreground hover:text-foreground" aria-label="Clear">×</button>
         <div className="h-5 w-px bg-border" />
+        {can("send_emails") && (
+          <Button size="sm" className="h-8 gap-1" onClick={onBulkSend} disabled={sending}>
+            <Send className="w-3.5 h-3.5" />{sending ? "Sending…" : `Send${sendableIds.length ? ` (${sendableIds.length})` : ""}`}
+          </Button>
+        )}
         {can("edit_leads") && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
