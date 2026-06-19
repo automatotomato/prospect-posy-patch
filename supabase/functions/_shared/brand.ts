@@ -8,10 +8,10 @@ export const BRAND = {
   tagline: "Business intelligence, data analytics, and process automation for operations-heavy teams.",
   // Sender
   senderName: "Z & C Consultants",
-  senderEmail: "management@z-cconsultants.com",
+  senderEmail: "marketing@z-cconsultants.com",
   senderDomain: "z-cconsultants.com",
-  replyTo: "management@z-cconsultants.com",
-  fromHeader: "Z & C Consultants <management@z-cconsultants.com>",
+  replyTo: "marketing@z-cconsultants.com",
+  fromHeader: "Z & C Consultants <marketing@z-cconsultants.com>",
   // Contact
   phone: "+1 (214) 997-4331",
   email: "management@z-cconsultants.com",
