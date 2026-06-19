@@ -319,6 +319,17 @@ export function ClientsPanel() {
                         {c.location && <span>{c.location}</span>}
                       </div>
                     </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => sendToPipeline([c])}
+                      disabled={!c.email || c.do_not_contact || c.unsubscribed}
+                      className="shrink-0 h-8 gap-1"
+                      title={!c.email ? "Needs an email" : c.do_not_contact ? "Marked DNC" : c.unsubscribed ? "Unsubscribed" : "Send to pipeline"}
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">To pipeline</span>
+                    </Button>
                     <Button variant="ghost" size="icon" onClick={() => remove(c.id)} className="shrink-0">
                       <Trash2 className="w-4 h-4 text-muted-foreground" />
                     </Button>
