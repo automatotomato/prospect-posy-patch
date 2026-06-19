@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Upload, Plus, Trash2, RefreshCw, Search, Users, Mail, Phone, Pencil, Ban, MailX } from "lucide-react";
+import { Upload, Plus, Trash2, RefreshCw, Search, Users, Mail, Phone, Pencil, Ban, MailX, Send } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 
@@ -143,6 +143,58 @@ export function ClientsPanel() {
     toast.success(`Updated ${ids.length} contact${ids.length > 1 ? "s" : ""}`);
   };
 
+  const sendToPipeline = async (targets: Client[]) => {
+    const withEmail = targets.filter((c) => c.email && !c.do_not_contact && !c.unsubscribed);
+    const skipped = targets.length - withEmail.length;
+    if (withEmail.length === 0) {
+      return toast.error("No eligible contacts — each lead needs an email and must not be DNC/unsubscribed.");
+    }
+    const { data: userResp } = await supabase.auth.getUser();
+    const ownerId = userResp.user?.id;
+    if (!ownerId) return toast.error("Not signed in");
+
+    const emails = withEmail.map((c) => c.email!.toLowerCase());
+    const { data: existing } = await supabase
+      .from("sales_leads")
+      .select("email")
+      .in("email", emails);
+    const existingSet = new Set((existing || []).map((r: any) => (r.email || "").toLowerCase()));
+
+    const rows = withEmail
+      .filter((c) => !existingSet.has(c.email!.toLowerCase()))
+      .map((c) => {
+        const [city, state] = (c.location || "").split(",").map((s) => s.trim());
+        return {
+          owner_id: ownerId,
+          business_name: c.business_name,
+          email: c.email,
+          phone: c.phone,
+          city: city || null,
+          state: state || null,
+          industry: c.industry,
+          source: "my_contacts",
+          status: "new",
+          stage: "new",
+        };
+      });
+
+    const duplicates = withEmail.length - rows.length;
+    if (rows.length === 0) {
+      return toast.message("Already in pipeline", {
+        description: `${duplicates} contact${duplicates > 1 ? "s are" : " is"} already a lead.`,
+      });
+    }
+
+    const { error } = await supabase.from("sales_leads").insert(rows);
+    if (error) return toast.error(error.message);
+
+    const parts = [`${rows.length} sent to pipeline`];
+    if (duplicates) parts.push(`${duplicates} already there`);
+    if (skipped) parts.push(`${skipped} skipped (no email / DNC)`);
+    toast.success(parts.join(" • "));
+    clearSelection();
+  };
+
   return (
     <div className="space-y-4">
       <div className="bg-card border border-border rounded-2xl p-4 md:p-5">
@@ -267,6 +319,17 @@ export function ClientsPanel() {
                         {c.location && <span>{c.location}</span>}
                       </div>
                     </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => sendToPipeline([c])}
+                      disabled={!c.email || c.do_not_contact || c.unsubscribed}
+                      className="shrink-0 h-8 gap-1"
+                      title={!c.email ? "Needs an email" : c.do_not_contact ? "Marked DNC" : c.unsubscribed ? "Unsubscribed" : "Send to pipeline"}
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">To pipeline</span>
+                    </Button>
                     <Button variant="ghost" size="icon" onClick={() => remove(c.id)} className="shrink-0">
                       <Trash2 className="w-4 h-4 text-muted-foreground" />
                     </Button>
@@ -283,6 +346,13 @@ export function ClientsPanel() {
           <Badge variant="secondary" className="font-semibold">{selected.size} selected</Badge>
           <button onClick={clearSelection} className="text-muted-foreground hover:text-foreground" aria-label="Clear">×</button>
           <div className="h-5 w-px bg-border" />
+          <Button
+            size="sm"
+            className="h-8 gap-1"
+            onClick={() => sendToPipeline(clients.filter((c) => selected.has(c.id)))}
+          >
+            <Send className="w-3.5 h-3.5" />Send to pipeline
+          </Button>
           <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => setEditOpen(true)}>
             <Pencil className="w-3.5 h-3.5" />Edit
           </Button>
