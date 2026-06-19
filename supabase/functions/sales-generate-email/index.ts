@@ -67,11 +67,11 @@ Return strict JSON only:
 - Do NOT include a calendar/booking URL in the body — the send pipeline appends a "Book a 15-min call" button automatically. You may mention "grab a slot on my calendar below" or "reply, call, or pick a time" but never paste a URL.
 - Sign off exactly:\n— Z & C Consultants\n+1 (214) 997-4331`;
 
-    const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${lovableKey}` },
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${openaiKey}` },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gpt-4o-mini",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
