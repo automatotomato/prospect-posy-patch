@@ -508,21 +508,30 @@ export function BulkBar() {
   const selectedLeads = leads.filter((l) => selected.has(l.id));
   const sendableIds = selectedLeads.filter((l) => l.email && l.email_subject && l.email_body).map((l) => l.id);
 
-  const onBulkSend = async () => {
+  const doSend = async (dripIntervalMinutes: number) => {
     if (sendableIds.length === 0) {
       const { toast } = await import("sonner");
       toast.error("None of the selected leads have a drafted email + valid email address");
       return;
     }
     const skipped = ids.length - sendableIds.length;
-    if (!confirm(`Send email to ${sendableIds.length} lead${sendableIds.length > 1 ? "s" : ""}?${skipped ? ` (${skipped} skipped — missing draft or email)` : ""}`)) return;
+    const dripNote = dripIntervalMinutes > 0
+      ? ` as a drip (${dripIntervalMinutes} min between each — last sends in ~${Math.round((sendableIds.length - 1) * dripIntervalMinutes)} min)`
+      : "";
+    if (!confirm(`Send email to ${sendableIds.length} lead${sendableIds.length > 1 ? "s" : ""}${dripNote}?${skipped ? ` (${skipped} skipped — missing draft or email)` : ""}`)) return;
     const { toast } = await import("sonner");
     const { supabase } = await import("@/integrations/supabase/client");
     setSending(true);
-    const { data, error } = await supabase.functions.invoke("sales-send-email", { body: { leadIds: sendableIds } });
+    const { data, error } = await supabase.functions.invoke("sales-send-email", {
+      body: { leadIds: sendableIds, dripIntervalMinutes },
+    });
     setSending(false);
     if (error) return toast.error(error.message);
-    toast.success(`Sent ${data?.sent || 0} of ${data?.total || 0} emails`);
+    if (dripIntervalMinutes > 0) {
+      toast.success(`Queued ${data?.sent || 0} of ${data?.total || 0} emails on a ${dripIntervalMinutes}-min drip`);
+    } else {
+      toast.success(`Sent ${data?.sent || 0} of ${data?.total || 0} emails`);
+    }
     clearSelection();
     await load();
   };
@@ -534,9 +543,29 @@ export function BulkBar() {
         <button onClick={clearSelection} className="text-muted-foreground hover:text-foreground" aria-label="Clear">×</button>
         <div className="h-5 w-px bg-border" />
         {can("send_emails") && (
-          <Button size="sm" className="h-8 gap-1" onClick={onBulkSend} disabled={sending}>
-            <Send className="w-3.5 h-3.5" />{sending ? "Sending…" : `Send${sendableIds.length ? ` (${sendableIds.length})` : ""}`}
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" className="h-8 gap-1" disabled={sending}>
+                <Send className="w-3.5 h-3.5" />{sending ? "Sending…" : `Send${sendableIds.length ? ` (${sendableIds.length})` : ""}`}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuLabel>Send now</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => doSend(0)}>Send all immediately</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Drip (delay between each)</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => doSend(2)}>Every 2 minutes</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => doSend(5)}>Every 5 minutes</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => doSend(15)}>Every 15 minutes</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => doSend(30)}>Every 30 minutes</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => doSend(60)}>Every 1 hour</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => {
+                const v = prompt("Drip interval in minutes between each send", "10");
+                const n = Number(v);
+                if (Number.isFinite(n) && n >= 0) doSend(n);
+              }}>Custom…</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
         {can("edit_leads") && (
           <DropdownMenu>
