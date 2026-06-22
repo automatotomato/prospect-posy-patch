@@ -10,6 +10,8 @@ const corsHeaders = {
 
 interface Body {
   leadIds: string[];
+  /** Minutes between each send. 0 / undefined = send all immediately. */
+  dripIntervalMinutes?: number;
 }
 
 const json = (status: number, body: unknown) =>
