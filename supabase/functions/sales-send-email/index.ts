@@ -39,9 +39,10 @@ serve(async (req) => {
     const { data: { user }, error: uErr } = await supabaseAuth.auth.getUser();
     if (uErr || !user) return json(401, { error: "Unauthorized" });
 
-    const { leadIds }: Body = await req.json();
+    const { leadIds, dripIntervalMinutes }: Body = await req.json();
     if (!Array.isArray(leadIds) || leadIds.length === 0)
       return json(400, { error: "leadIds required" });
+    const dripMin = Math.max(0, Number(dripIntervalMinutes) || 0);
 
     // Check sender domain (non-blocking — restricted "sending only" keys can't read /domains)
     const sender = await verifySenderDomain();
