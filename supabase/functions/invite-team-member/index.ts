@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
     // Send branded invite email via Resend (if configured)
     let emailSent = false;
     if (RESEND_API_KEY) {
-      const appUrl = "https://z-cconsultants.com";
+      const appUrl = "https://zcconsultants.automateplanet.com";
       const html = `
         <div style="font-family: 'Outfit', Arial, sans-serif; background:#fff; padding:32px 28px; max-width:560px; margin:0 auto; color:#0f172a;">
           <p style="font-size:16px; font-weight:bold; color:hsl(199,89%,35%); margin:0 0 20px;">Z & C Consultants</p>
