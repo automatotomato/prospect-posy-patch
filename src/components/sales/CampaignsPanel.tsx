@@ -362,6 +362,11 @@ function CampaignDialog({ campaignId, open, onOpenChange, onDone, presetName, pr
             <code className="text-xs">{"{{business_name}}"}</code> and{" "}
             <code className="text-xs">{"{{contact_name}}"}</code> in the subject and body.
           </DialogDescription>
+          {isEdit && (
+            <div className="mt-2 rounded-md border border-primary/30 bg-primary/5 text-primary text-xs px-3 py-2">
+              ✏️ Changes you make here apply to <strong>all emails that haven't been sent yet</strong> — already-sent emails aren't affected.
+            </div>
+          )}
         </DialogHeader>
 
         <div className="space-y-5">
