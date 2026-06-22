@@ -74,7 +74,7 @@ serve(async (req) => {
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px;">
 ${lead.email_body.split("\n").map((ln: string) => ln.trim() ? `<p style="margin:0 0 16px 0;">${ln}</p>` : "").join("")}
 <div style="margin:28px 0 8px 0;text-align:center;">
-<a href="${BRAND.bookingUrl}" style="display:inline-block;background:#0f766e;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:600;font-size:14px;">Book a 15-min call</a>
+<a href="${BRAND.bookingUrl.replace(/&/g, "&amp;")}" style="display:inline-block;background:#0f766e;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:600;font-size:14px;">Book a 15-min call</a>
 <div style="font-size:11px;color:#666;margin-top:8px;">Or reply to this email · <a href="tel:${BRAND.phone.replace(/[^0-9+]/g, "")}" style="color:#0f766e;text-decoration:none;">${BRAND.phone}</a></div>
 </div>
 <p style="margin-top:40px;padding-top:20px;border-top:1px solid #eee;font-size:11px;color:#999;text-align:center;">
