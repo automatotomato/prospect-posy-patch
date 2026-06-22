@@ -127,16 +127,32 @@ export default function Settings() {
 
   async function addMember() {
     if (!newMemberEmail.trim()) return toast({ title: "Email required", variant: "destructive" });
-    const { error } = await supabase.from("allowed_users").insert({
-      email: newMemberEmail.trim().toLowerCase(),
-      name: newMemberName.trim() || null,
-      role: newMemberRole as any,
-      invited_by: user!.id,
+    const { data, error } = await supabase.functions.invoke("invite-team-member", {
+      body: {
+        email: newMemberEmail.trim().toLowerCase(),
+        name: newMemberName.trim() || newMemberEmail.trim().split("@")[0],
+        role: newMemberRole,
+      },
     });
-    if (error) return toast({ title: "Failed to add", description: error.message, variant: "destructive" });
-    toast({ title: "Team member invited", description: "They can sign in with this email." });
+    if (error) return toast({ title: "Failed to invite", description: error.message, variant: "destructive" });
+    toast({
+      title: "Team member invited",
+      description: (data as any)?.emailSent ? "Invitation email sent." : "Saved, but email did not send.",
+    });
     setNewMemberEmail(""); setNewMemberName(""); setNewMemberRole("sales_rep");
     void loadAll();
+  }
+
+  async function resendInvite(m: Member) {
+    const { data, error } = await supabase.functions.invoke("invite-team-member", {
+      body: { email: m.email, name: m.name || m.email.split("@")[0], role: m.role },
+    });
+    if (error) return toast({ title: "Resend failed", description: error.message, variant: "destructive" });
+    toast({
+      title: (data as any)?.emailSent ? "Invitation re-sent" : "Could not send email",
+      description: (data as any)?.emailSent ? `Sent to ${m.email}` : "Check email configuration.",
+      variant: (data as any)?.emailSent ? "default" : "destructive",
+    });
   }
 
   async function removeMember(id: string) {
