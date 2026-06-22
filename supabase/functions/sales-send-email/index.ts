@@ -56,9 +56,14 @@ serve(async (req) => {
       .in("id", leadIds);
     if (lErr) return json(500, { error: lErr.message });
 
-    const results: Array<{ id: string; ok: boolean; reason?: string }> = [];
+    const results: Array<{ id: string; ok: boolean; reason?: string; scheduled_at?: string }> = [];
 
-    for (const lead of leads || []) {
+    // Order leads to match leadIds order so drip cadence is predictable
+    const leadById = new Map((leads || []).map((l: any) => [l.id, l]));
+    const orderedLeads = leadIds.map((id) => leadById.get(id)).filter(Boolean) as any[];
+
+    let dripIndex = 0;
+    for (const lead of orderedLeads) {
       if (!lead.email) { results.push({ id: lead.id, ok: false, reason: "no email" }); continue; }
       if (!lead.email_subject || !lead.email_body) {
         results.push({ id: lead.id, ok: false, reason: "no draft" }); continue;
@@ -76,16 +81,26 @@ ${lead.email_body.split("\n").map((ln: string) => ln.trim() ? `<p style="margin:
 <a href="${unsubscribeUrl}" style="color:#999;">Unsubscribe</a> from future emails</p>
 </body></html>`;
 
+      // Drip: stagger each send via Resend's `scheduled_at` (ISO 8601)
+      let scheduledAtIso: string | undefined;
+      if (dripMin > 0 && dripIndex > 0) {
+        scheduledAtIso = new Date(Date.now() + dripIndex * dripMin * 60 * 1000).toISOString();
+      }
+      dripIndex += 1;
+
+      const payload: Record<string, unknown> = {
+        from: BRAND.fromHeader,
+        to: [lead.email],
+        subject: lead.email_subject,
+        html: htmlBody,
+        reply_to: BRAND.replyTo,
+      };
+      if (scheduledAtIso) payload.scheduled_at = scheduledAtIso;
+
       const r = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          from: BRAND.fromHeader,
-          to: [lead.email],
-          subject: lead.email_subject,
-          html: htmlBody,
-          reply_to: BRAND.replyTo,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await r.json();
       if (!r.ok) {
@@ -96,24 +111,27 @@ ${lead.email_body.split("\n").map((ln: string) => ln.trim() ? `<p style="margin:
       const now = new Date().toISOString();
       const followUp = new Date(); followUp.setDate(followUp.getDate() + 4);
       await supabase.from("sales_leads").update({
-        stage: "contacted",
-        last_contacted_at: now,
+        stage: scheduledAtIso ? lead.stage : "contacted",
+        last_contacted_at: scheduledAtIso ? lead.last_contacted_at : now,
         last_activity_at: now,
         contact_count: (lead.contact_count || 0) + 1,
         follow_up_at: followUp.toISOString(),
       }).eq("id", lead.id);
 
       await supabase.from("sales_activities").insert({
-        lead_id: lead.id, owner_id: user.id, type: "email_sent",
-        note: lead.email_subject, metadata: { resend_id: data?.id },
+        lead_id: lead.id, owner_id: user.id,
+        type: scheduledAtIso ? "email_scheduled" : "email_sent",
+        note: `${lead.email_subject}${scheduledAtIso ? ` (scheduled ${scheduledAtIso})` : ""}`,
+        metadata: { resend_id: data?.id, scheduled_at: scheduledAtIso },
       });
 
       await supabase.from("sent_emails").insert({
         resend_id: data?.id, to_email: lead.email, subject: lead.email_subject,
-        body: lead.email_body, email_type: "sales_outreach", status: "sent",
+        body: lead.email_body, email_type: "sales_outreach",
+        status: scheduledAtIso ? "scheduled" : "sent",
       });
 
-      results.push({ id: lead.id, ok: true });
+      results.push({ id: lead.id, ok: true, scheduled_at: scheduledAtIso });
     }
 
     const sent = results.filter((r) => r.ok).length;
