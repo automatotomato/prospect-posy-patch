@@ -1,2 +1,11 @@
 import { CampaignsPanel } from "@/components/sales/CampaignsPanel";
-export default function Campaigns() { return <CampaignsPanel />; }
+import { AIDraftsPanel } from "@/components/sales/AIDraftsPanel";
+
+export default function Campaigns() {
+  return (
+    <div className="space-y-6">
+      <CampaignsPanel />
+      <AIDraftsPanel />
+    </div>
+  );
+}
