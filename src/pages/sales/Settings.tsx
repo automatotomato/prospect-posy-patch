@@ -532,6 +532,17 @@ export default function Settings() {
                     <Badge variant={m.accepted_at ? "default" : "secondary"} className="text-[10px]">
                       {m.accepted_at ? "Active" : "Pending"}
                     </Badge>
+                    {isAdmin && !m.accepted_at && (
+                      <Button
+                        variant="outline" size="sm"
+                        onClick={() => resendInvite(m)}
+                        className="h-7 gap-1"
+                        title="Resend invitation email"
+                      >
+                        <Mail className="w-3.5 h-3.5" />
+                        <span className="hidden md:inline">Resend</span>
+                      </Button>
+                    )}
                     {isAdmin && (
                       <Button
                         variant="outline" size="sm"
