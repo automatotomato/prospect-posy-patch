@@ -3,10 +3,13 @@ import { Check, MapPin, RefreshCw, Sparkles, Camera, Trophy } from "lucide-react
 import { Button } from "@/components/ui/button";
 import { useSales, KpiTile } from "./_shared";
 import { supabase } from "@/integrations/supabase/client";
+import TeamDashboard from "./TeamDashboard";
 
 export default function Dashboard() {
   const { stats, dueFollowUps, discover, discovering, lastScout, setScanOpen, isAdmin } = useSales();
   const [winsMonth, setWinsMonth] = useState<{ count: number; sum: number }>({ count: 0, sum: 0 });
+
+  if (!isAdmin) return <TeamDashboard />;
 
   useEffect(() => {
     const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);

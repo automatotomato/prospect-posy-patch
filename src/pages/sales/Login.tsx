@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Briefcase } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function SalesLogin() {
   const { user, signInWithPassword } = useAuth();
@@ -14,6 +15,7 @@ export default function SalesLogin() {
   const [email, setEmail] = useState("management@z-cconsultants.com");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [sendingReset, setSendingReset] = useState(false);
 
   useEffect(() => {
     if (user) navigate("/sales", { replace: true });
@@ -29,6 +31,18 @@ export default function SalesLogin() {
     } else {
       navigate("/sales", { replace: true });
     }
+  };
+
+  const sendReset = async () => {
+    const target = email.trim();
+    if (!target) return toast.error("Enter your email first");
+    setSendingReset(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(target, {
+      redirectTo: `${window.location.origin}/sales/set-password`,
+    });
+    setSendingReset(false);
+    if (error) return toast.error(error.message);
+    toast.success("Check your email for a password setup link");
   };
 
   return (
@@ -54,6 +68,14 @@ export default function SalesLogin() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Signing in..." : "Sign in"}
             </Button>
+            <button
+              type="button"
+              onClick={sendReset}
+              disabled={sendingReset}
+              className="w-full text-xs text-muted-foreground hover:text-primary transition-colors"
+            >
+              {sendingReset ? "Sending…" : "First time here or forgot password? Email me a setup link"}
+            </button>
           </form>
         </CardContent>
       </Card>
