@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Briefcase } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function SalesLogin() {
   const { user, signInWithPassword } = useAuth();
@@ -14,6 +15,7 @@ export default function SalesLogin() {
   const [email, setEmail] = useState("management@z-cconsultants.com");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [sendingReset, setSendingReset] = useState(false);
 
   useEffect(() => {
     if (user) navigate("/sales", { replace: true });
