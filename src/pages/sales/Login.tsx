@@ -82,9 +82,3 @@ export default function SalesLogin() {
     </div>
   );
 }
-          </form>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
