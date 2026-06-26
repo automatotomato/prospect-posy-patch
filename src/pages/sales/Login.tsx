@@ -9,6 +9,8 @@ import { toast } from "sonner";
 import { Briefcase } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
+const APP_URL = "https://zcconsultants.automateplanet.com";
+
 export default function SalesLogin() {
   const { user, signInWithPassword } = useAuth();
   const navigate = useNavigate();
@@ -38,7 +40,7 @@ export default function SalesLogin() {
     if (!target) return toast.error("Enter your email first");
     setSendingReset(true);
     const { error } = await supabase.auth.resetPasswordForEmail(target, {
-      redirectTo: `${window.location.origin}/sales/set-password`,
+      redirectTo: `${APP_URL}/sales/set-password`,
     });
     setSendingReset(false);
     if (error) return toast.error(error.message);

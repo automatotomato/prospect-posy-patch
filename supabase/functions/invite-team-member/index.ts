@@ -77,6 +77,7 @@ Deno.serve(async (req) => {
     // recovery link they'll use to land on /sales/set-password.
     const redirectTo = `${APP_URL}/sales/set-password`;
     let actionLink: string | null = null;
+    let recoveryCode: string | null = null;
     let userExists = false;
 
     // Try to find existing user
@@ -109,26 +110,34 @@ Deno.serve(async (req) => {
       console.error("generateLink error", linkErr);
     } else {
       actionLink = linkData?.properties?.action_link || null;
+      recoveryCode = linkData?.properties?.email_otp || null;
     }
 
     // Send branded invite email via Resend
     let emailSent = false;
-    if (RESEND_API_KEY && actionLink) {
-      const safeLink = actionLink.replace(/&/g, "&amp;");
+    if (RESEND_API_KEY && (actionLink || recoveryCode)) {
+      const setupUrl = `${APP_URL}/sales/set-password?email=${encodeURIComponent(email)}`;
+      const safeSetupUrl = setupUrl.replace(/&/g, "&amp;");
+      const safeLink = (actionLink || setupUrl).replace(/&/g, "&amp;");
       const html = `
         <div style="font-family: 'Outfit', Arial, sans-serif; background:#fff; padding:32px 28px; max-width:560px; margin:0 auto; color:#0f172a;">
           <p style="font-size:16px; font-weight:bold; color:hsl(199,89%,35%); margin:0 0 20px;">Z &amp; C Consultants</p>
           <h1 style="font-size:22px; margin:0 0 16px;">${userExists ? "Reset your password" : "You've been invited to the Sales CRM"}</h1>
           <p style="font-size:14px; line-height:1.6; color:#475569; margin:0 0 24px;">
             ${name}, ${userExists
-              ? "use the secure link below to set a new password and sign in."
-              : `you've been added as a <strong>${role === "admin" ? "Admin" : "Sales Rep"}</strong> on the Z &amp; C Consultants sales platform. Click below to create your password and sign in.`}
+              ? "use the recovery code below to set a new password and sign in."
+              : `you've been added as a <strong>${role === "admin" ? "Admin" : "Sales Rep"}</strong> on the Z &amp; C Consultants sales platform. Use the code below to create your password and sign in.`}
           </p>
-          <a href="${safeLink}"
+          ${recoveryCode ? `<div style="display:inline-block; font-size:26px; font-weight:700; letter-spacing:6px; color:#0f172a; background:#f4f4f6; border:1px solid #e4e4e7; border-radius:10px; padding:14px 18px; margin:0 0 24px;">${recoveryCode}</div>` : ""}
+          <br />
+          <a href="${recoveryCode ? safeSetupUrl : safeLink}"
              style="display:inline-block; background:hsl(199,89%,35%); color:#fff; font-weight:600; font-size:14px;
                     border-radius:10px; padding:12px 24px; text-decoration:none;">
-            ${userExists ? "Set new password" : "Set up your password"}
+            Open password setup
           </a>
+          <p style="font-size:13px; color:#475569; line-height:1.6; margin:24px 0 0;">
+            This code expires shortly. If it has expired, ask your admin to resend the invitation.
+          </p>
           <p style="font-size:12px; color:#94a3b8; margin:32px 0 0;">
             This link expires shortly for security. If you didn't expect this email, you can ignore it.
           </p>
@@ -156,7 +165,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ success: true, emailSent, hasLink: !!actionLink }), {
+    return new Response(JSON.stringify({ success: true, emailSent, hasLink: !!actionLink, hasCode: !!recoveryCode }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
