@@ -33,6 +33,18 @@ export default function SalesLogin() {
     }
   };
 
+  const sendReset = async () => {
+    const target = email.trim();
+    if (!target) return toast.error("Enter your email first");
+    setSendingReset(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(target, {
+      redirectTo: `${window.location.origin}/sales/set-password`,
+    });
+    setSendingReset(false);
+    if (error) return toast.error(error.message);
+    toast.success("Check your email for a password setup link");
+  };
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
@@ -56,6 +68,20 @@ export default function SalesLogin() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Signing in..." : "Sign in"}
             </Button>
+            <button
+              type="button"
+              onClick={sendReset}
+              disabled={sendingReset}
+              className="w-full text-xs text-muted-foreground hover:text-primary transition-colors"
+            >
+              {sendingReset ? "Sending…" : "First time here or forgot password? Email me a setup link"}
+            </button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
           </form>
         </CardContent>
       </Card>
