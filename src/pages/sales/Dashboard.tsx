@@ -9,16 +9,18 @@ export default function Dashboard() {
   const { stats, dueFollowUps, discover, discovering, lastScout, setScanOpen, isAdmin } = useSales();
   const [winsMonth, setWinsMonth] = useState<{ count: number; sum: number }>({ count: 0, sum: 0 });
 
-  if (!isAdmin) return <TeamDashboard />;
-
   useEffect(() => {
+    if (!isAdmin) return;
     const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
     supabase.from("sales_wins" as any).select("amount, won_at").gte("won_at", monthStart.toISOString())
       .then(({ data }) => {
         const rows = (data as any[]) || [];
         setWinsMonth({ count: rows.length, sum: rows.reduce((s, r) => s + Number(r.amount || 0), 0) });
       });
-  }, []);
+  }, [isAdmin]);
+
+  if (!isAdmin) return <TeamDashboard />;
+
 
   return (
     <>
