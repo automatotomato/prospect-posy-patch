@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import Team from "./pages/Team";
 import SalesLogin from "./pages/sales/Login";
+import SetPassword from "./pages/sales/SetPassword";
 import SalesLayout from "./pages/sales/SalesLayout";
 import SalesDashboard from "./pages/sales/Dashboard";
 import Pipeline from "./pages/sales/Pipeline";
@@ -38,6 +39,7 @@ const App = () => (
           <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route path="/sales/login" element={<SalesLogin />} />
+            <Route path="/sales/set-password" element={<SetPassword />} />
             <Route path="/sales" element={<ProtectedRoute><SalesLayout /></ProtectedRoute>}>
               <Route index element={<SalesDashboard />} />
               <Route path="pipeline" element={<Pipeline />} />
