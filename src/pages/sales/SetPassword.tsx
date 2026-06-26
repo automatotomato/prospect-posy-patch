@@ -8,31 +8,100 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { toast } from "sonner";
 import { KeyRound } from "lucide-react";
 
+const APP_URL = "https://zcconsultants.automateplanet.com";
+
 export default function SetPassword() {
   const navigate = useNavigate();
   const [ready, setReady] = useState(false);
+  const [checkingLink, setCheckingLink] = useState(true);
+  const [linkError, setLinkError] = useState("");
   const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
+  const [sendingReset, setSendingReset] = useState(false);
 
   useEffect(() => {
-    // Supabase auto-detects the recovery token in the URL and creates a session.
-    // We just listen for the resulting session/event.
+    let mounted = true;
+    const query = new URLSearchParams(window.location.search);
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const errorCode = query.get("error_code") || hash.get("error_code");
+    const errorDescription = query.get("error_description") || hash.get("error_description");
+    const emailFromUrl = query.get("email") || hash.get("email") || "";
+    const tokenHash = query.get("token_hash") || hash.get("token_hash");
+    const type = query.get("type") || hash.get("type");
+
+    if (emailFromUrl) setEmail(emailFromUrl);
+    if (errorCode) {
+      setLinkError(errorDescription?.replace(/\+/g, " ") || "This password reset link is invalid or has expired.");
+      setCheckingLink(false);
+    }
+
+    if (tokenHash && type === "recovery") {
+      supabase.auth.verifyOtp({ token_hash: tokenHash, type: "recovery" }).then(({ data, error }) => {
+        if (!mounted) return;
+        if (error) {
+          setLinkError(error.message);
+          setCheckingLink(false);
+          return;
+        }
+        if (data.session?.user) {
+          setEmail(data.session.user.email || emailFromUrl);
+          setReady(true);
+        }
+        setCheckingLink(false);
+      });
+    }
+
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setEmail(session.user.email || "");
         setReady(true);
       }
+      setCheckingLink(false);
     });
     supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return;
       if (data.session?.user) {
         setEmail(data.session.user.email || "");
         setReady(true);
       }
+      setCheckingLink(false);
     });
-    return () => sub.subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
   }, []);
+
+  const verifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const target = email.trim().toLowerCase();
+    const token = code.replace(/\s/g, "");
+    if (!target) return toast.error("Enter your email");
+    if (!token) return toast.error("Enter the recovery code from your email");
+    setLoading(true);
+    const { data, error } = await supabase.auth.verifyOtp({ email: target, token, type: "recovery" });
+    setLoading(false);
+    if (error) return toast.error(error.message);
+    setEmail(data.user?.email || target);
+    setReady(true);
+    setLinkError("");
+    toast.success("Code verified — choose a new password");
+  };
+
+  const sendReset = async () => {
+    const target = email.trim().toLowerCase();
+    if (!target) return toast.error("Enter your email first");
+    setSendingReset(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(target, {
+      redirectTo: `${APP_URL}/sales/set-password`,
+    });
+    setSendingReset(false);
+    if (error) return toast.error(error.message);
+    toast.success("Check your email for a new recovery code");
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,7 +126,9 @@ export default function SetPassword() {
           <CardDescription>
             {ready
               ? `Create a password for ${email} to finish setting up your account.`
-              : "Verifying your invite link…"}
+              : checkingLink
+                ? "Verifying your password setup link…"
+                : "Enter the recovery code from your newest email to continue."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -76,9 +147,27 @@ export default function SetPassword() {
               </Button>
             </form>
           ) : (
-            <p className="text-sm text-muted-foreground text-center">
-              If this page doesn't continue in a few seconds, please request a new invite link from your admin.
-            </p>
+            <form onSubmit={verifyCode} className="space-y-4">
+              {linkError && (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+                  {linkError}
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="code">Recovery code</Label>
+                <Input id="code" inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value)} required />
+              </div>
+              <Button type="submit" className="w-full" disabled={loading || checkingLink}>
+                {loading ? "Verifying…" : "Verify code"}
+              </Button>
+              <Button type="button" variant="outline" className="w-full" onClick={sendReset} disabled={sendingReset}>
+                {sendingReset ? "Sending…" : "Send a new code"}
+              </Button>
+            </form>
           )}
         </CardContent>
       </Card>
