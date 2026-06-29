@@ -16,7 +16,8 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { STAGES, type Lead } from "@/hooks/useSalesLeads";
+import { STAGES, type Lead, wasContacted, displayStageOf } from "@/hooks/useSalesLeads";
+export { wasContacted, displayStageOf };
 
 /* ============ Context ============ */
 
@@ -31,7 +32,7 @@ export type SalesCtx = {
   setStage: (lead: Lead, stage: string, note?: string) => Promise<void>;
   scheduleFollowUp: (lead: Lead, days: number) => Promise<void>;
   removeLead: (id: string) => Promise<any>;
-  stats: { total: number; by: Record<string, number>; dueFollowUps: number };
+  stats: { total: number; by: Record<string, number>; dueFollowUps: number; contactedEver: number; notContacted: number; inSequence: number };
   dueFollowUps: Lead[];
   queuedLeads: Lead[];
   filteredLeads: Lead[];
@@ -42,6 +43,8 @@ export type SalesCtx = {
   industries: string[];
   industryFilter: string;
   setIndustryFilter: (s: string) => void;
+  statusFilter: StatusFilterValue;
+  setStatusFilter: (s: StatusFilterValue) => void;
 
   // drawer
   openLead: Lead | null;
@@ -108,14 +111,32 @@ export function fmtDate(iso?: string | null) {
   return d.toLocaleDateString();
 }
 
-export function StageBadge({ stage }: { stage: string }) {
-  const label = STAGES.find((s) => s.id === stage)?.label || stage;
-  const m = STAGE_META[stage];
+export function StageBadge({ stage, lead }: { stage?: string; lead?: Pick<Lead, "stage" | "contact_count" | "last_contacted_at"> }) {
+  const effective = lead ? displayStageOf(lead) : (stage || "new");
+  const label = STAGES.find((s) => s.id === effective)?.label || effective;
+  const m = STAGE_META[effective];
   return (
     <span className={`inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider ${m?.accent || ""}`}>
       <span className={`stage-dot ${m?.dot || "bg-muted-foreground"}`} />{label}
     </span>
   );
+}
+
+/* ============ Status filter ============ */
+export type StatusFilterValue = "all" | "new" | "contacted" | "in_sequence" | "due" | "replied" | "won";
+
+export function statusMatches(l: Lead, v: StatusFilterValue): boolean {
+  if (v === "all") return true;
+  if (v === "new") return !wasContacted(l);
+  if (v === "contacted") return wasContacted(l);
+  if (v === "in_sequence") return (l.contact_count || 0) > 0 || !!l.last_contacted_at;
+  if (v === "due") {
+    if (!l.follow_up_at) return false;
+    return new Date(l.follow_up_at).getTime() <= Date.now() && !["replied","won","lost"].includes(l.stage);
+  }
+  if (v === "replied") return l.stage === "replied";
+  if (v === "won") return l.stage === "won";
+  return true;
 }
 
 export function ActivityIconFor({ type }: { type: string }) {
@@ -256,7 +277,7 @@ export function LeadTable({
                   {showColumn === "queued" && <>Queued {fmtDate(l.queued_at)}</>}
                   {showColumn === "updated" && <>{fmtDate(l.last_activity_at || l.created_at)}</>}
                 </div>
-                <StageBadge stage={l.stage} />
+                <StageBadge lead={l} />
                 <ChevronRight className="w-4 h-4 text-muted-foreground" />
               </button>
             </div>
@@ -289,7 +310,7 @@ export function LeadDrawer({
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <StageBadge stage={lead.stage} />
+            <StageBadge lead={lead} />
             <Button size="sm" variant="ghost" onClick={onClose} className="h-7 w-7 p-0">×</Button>
           </div>
         </div>
@@ -753,4 +774,50 @@ export function IndustryFilter({
     </div>
   );
 }
+
+/* ============ Status filter UI ============ */
+export function StatusFilter({
+  value, onChange, counts,
+}: {
+  value: StatusFilterValue;
+  onChange: (v: StatusFilterValue) => void;
+  counts?: Partial<Record<StatusFilterValue, number>>;
+}) {
+  const opts: { id: StatusFilterValue; label: string }[] = [
+    { id: "all",         label: "All" },
+    { id: "new",         label: "New (not contacted)" },
+    { id: "contacted",   label: "Already contacted" },
+    { id: "in_sequence", label: "In sequence" },
+    { id: "due",         label: "Due follow-up" },
+    { id: "replied",     label: "Replied" },
+    { id: "won",         label: "Won" },
+  ];
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      {opts.map((o) => {
+        const active = value === o.id;
+        const c = counts?.[o.id];
+        return (
+          <button
+            key={o.id}
+            onClick={() => onChange(o.id)}
+            className={`inline-flex items-center gap-1.5 px-3 h-8 rounded-full text-xs font-medium border transition-colors ${
+              active
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-card text-muted-foreground hover:text-foreground border-border hover:border-primary/40"
+            }`}
+          >
+            {o.label}
+            {typeof c === "number" && (
+              <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${active ? "bg-primary-foreground/20" : "bg-muted/60"}`}>
+                {c}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 

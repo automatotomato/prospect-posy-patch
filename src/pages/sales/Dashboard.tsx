@@ -27,8 +27,8 @@ export default function Dashboard() {
       {/* KPI ROW */}
       <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <KpiTile label="Total Leads" value={stats.total} delta={stats.total > 0 ? `${stats.total} active` : "—"} progress={Math.min(100, stats.total * 4)} />
-        <KpiTile label="Queued" value={stats.by.queued || 0} delta="Ready to send" progress={Math.min(100, (stats.by.queued || 0) * 8)} />
-        <KpiTile label="Contacted" value={stats.by.contacted || 0} delta="+ this week" deltaTone="emerald" progress={Math.min(100, (stats.by.contacted || 0) * 6)} />
+        <KpiTile label="Not yet contacted" value={stats.notContacted} delta={`${stats.notContacted} fresh`} deltaTone="amber" progress={Math.min(100, stats.notContacted * 4)} />
+        <KpiTile label="Contacted (ever)" value={stats.contactedEver} delta={stats.contactedEver ? "Worked" : "—"} deltaTone="emerald" progress={Math.min(100, stats.contactedEver * 4)} />
         <KpiTile
           label="Due Follow-ups"
           value={dueFollowUps.length}
@@ -39,6 +39,18 @@ export default function Dashboard() {
         <KpiTile label="Won (all)" value={stats.by.won || 0} delta="Closed deals" progress={Math.min(100, (stats.by.won || 0) * 10)} />
         <KpiTile label="Wins this month" value={winsMonth.count} delta={winsMonth.sum ? `$${winsMonth.sum.toLocaleString()}` : "Log a deal"} deltaTone="emerald" highlight progress={Math.min(100, winsMonth.count * 20)} />
       </section>
+
+      {/* Reconciliation — same definitions as the Follow-ups tab */}
+      <section className="text-xs text-muted-foreground bg-card border border-border rounded-xl px-4 py-2.5 flex flex-wrap items-center gap-x-4 gap-y-1">
+        <span><span className="font-semibold text-foreground">{stats.inSequence}</span> in sequence</span>
+        <span className="opacity-50">·</span>
+        <span><span className="font-semibold text-foreground">{stats.notContacted}</span> awaiting first touch</span>
+        <span className="opacity-50">·</span>
+        <span><span className="font-semibold text-foreground">{dueFollowUps.length}</span> due follow-up</span>
+        <span className="opacity-50">·</span>
+        <span><span className="font-semibold text-foreground">{stats.by.queued || 0}</span> queued</span>
+      </section>
+
 
       {/* SCAN BUSINESS CARD */}
       <section className="bg-gradient-to-br from-primary/15 via-card to-card border border-primary/30 rounded-2xl p-4 md:p-5 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xl">
