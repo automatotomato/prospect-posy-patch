@@ -775,3 +775,49 @@ export function IndustryFilter({
   );
 }
 
+/* ============ Status filter UI ============ */
+export function StatusFilter({
+  value, onChange, counts,
+}: {
+  value: StatusFilterValue;
+  onChange: (v: StatusFilterValue) => void;
+  counts?: Partial<Record<StatusFilterValue, number>>;
+}) {
+  const opts: { id: StatusFilterValue; label: string }[] = [
+    { id: "all",         label: "All" },
+    { id: "new",         label: "New (not contacted)" },
+    { id: "contacted",   label: "Already contacted" },
+    { id: "in_sequence", label: "In sequence" },
+    { id: "due",         label: "Due follow-up" },
+    { id: "replied",     label: "Replied" },
+    { id: "won",         label: "Won" },
+  ];
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      {opts.map((o) => {
+        const active = value === o.id;
+        const c = counts?.[o.id];
+        return (
+          <button
+            key={o.id}
+            onClick={() => onChange(o.id)}
+            className={`inline-flex items-center gap-1.5 px-3 h-8 rounded-full text-xs font-medium border transition-colors ${
+              active
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-card text-muted-foreground hover:text-foreground border-border hover:border-primary/40"
+            }`}
+          >
+            {o.label}
+            {typeof c === "number" && (
+              <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${active ? "bg-primary-foreground/20" : "bg-muted/60"}`}>
+                {c}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+
