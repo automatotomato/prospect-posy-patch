@@ -227,12 +227,17 @@ export function FollowUpSequencePanel({
 
         {/* ============ TRACKER ============ */}
         <TabsContent value="tracker" className="mt-4 space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <StatCard label="Enrolled" value={followedLeads.length} tone="primary" />
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <StatCard label="Awaiting first touch" value={leads.filter((l) => (l.contact_count || 0) === 0 && !l.last_contacted_at).length} tone="amber" />
+            <StatCard label="Enrolled (contacted)" value={followedLeads.length} tone="primary" />
             <StatCard label="Step 1-2" value={followedLeads.filter(f => f.step <= 2).length} tone="sky" />
             <StatCard label="Step 3-4" value={followedLeads.filter(f => f.step >= 3 && f.step <= 4).length} tone="amber" />
             <StatCard label="Final stretch" value={followedLeads.filter(f => f.step >= 5).length} tone="emerald" />
           </div>
+          <p className="text-[11px] text-muted-foreground -mt-1">
+            Step counts only include leads with at least one real touch. Leads with zero touches show under <span className="font-semibold">Awaiting first touch</span>.
+          </p>
+
 
           <Card className="overflow-hidden">
             <div className="px-5 py-3 border-b border-border bg-muted/30 flex items-center justify-between">

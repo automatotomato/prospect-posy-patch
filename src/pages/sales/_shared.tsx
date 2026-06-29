@@ -783,39 +783,90 @@ export function StatusFilter({
   onChange: (v: StatusFilterValue) => void;
   counts?: Partial<Record<StatusFilterValue, number>>;
 }) {
-  const opts: { id: StatusFilterValue; label: string }[] = [
+  // Auto-derive counts from context when caller doesn't provide them, so the
+  // New vs Contacted split is always visible.
+  const ctx = useContext(SalesContext);
+  const base = ctx?.leads ?? [];
+  const scoped = ctx
+    ? base.filter((l) => ctx.industryFilter === "all" || (l.industry || "") === ctx.industryFilter)
+    : [];
+  const auto: Partial<Record<StatusFilterValue, number>> = ctx ? {
+    all:         scoped.length,
+    new:         scoped.filter((l) => statusMatches(l, "new")).length,
+    contacted:   scoped.filter((l) => statusMatches(l, "contacted")).length,
+    in_sequence: scoped.filter((l) => statusMatches(l, "in_sequence")).length,
+    due:         scoped.filter((l) => statusMatches(l, "due")).length,
+    replied:     scoped.filter((l) => statusMatches(l, "replied")).length,
+    won:         scoped.filter((l) => statusMatches(l, "won")).length,
+  } : {};
+  const c = { ...auto, ...(counts || {}) };
+
+  const primary: { id: StatusFilterValue; label: string; sub: string }[] = [
+    { id: "new",       label: "New",              sub: "no contact yet" },
+    { id: "contacted", label: "Already contacted", sub: "touches exist" },
+  ];
+  const secondary: { id: StatusFilterValue; label: string }[] = [
     { id: "all",         label: "All" },
-    { id: "new",         label: "New (not contacted)" },
-    { id: "contacted",   label: "Already contacted" },
     { id: "in_sequence", label: "In sequence" },
     { id: "due",         label: "Due follow-up" },
     { id: "replied",     label: "Replied" },
     { id: "won",         label: "Won" },
   ];
+
   return (
-    <div className="flex items-center gap-1.5 flex-wrap">
-      {opts.map((o) => {
-        const active = value === o.id;
-        const c = counts?.[o.id];
-        return (
-          <button
-            key={o.id}
-            onClick={() => onChange(o.id)}
-            className={`inline-flex items-center gap-1.5 px-3 h-8 rounded-full text-xs font-medium border transition-colors ${
-              active
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-card text-muted-foreground hover:text-foreground border-border hover:border-primary/40"
-            }`}
-          >
-            {o.label}
-            {typeof c === "number" && (
-              <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${active ? "bg-primary-foreground/20" : "bg-muted/60"}`}>
-                {c}
+    <div className="space-y-2">
+      {/* Primary split: the answer to "new vs already contacted" */}
+      <div className="grid grid-cols-2 gap-2">
+        {primary.map((o) => {
+          const active = value === o.id;
+          const n = c[o.id];
+          return (
+            <button
+              key={o.id}
+              onClick={() => onChange(active ? "all" : o.id)}
+              className={`flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl border text-left transition-colors ${
+                active
+                  ? "bg-primary/10 border-primary/40 ring-1 ring-primary/30"
+                  : "bg-card border-border hover:border-primary/40"
+              }`}
+            >
+              <div className="min-w-0">
+                <div className={`text-sm font-semibold ${active ? "text-primary" : ""}`}>{o.label}</div>
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{o.sub}</div>
+              </div>
+              <span className={`font-display text-xl font-bold tabular-nums ${active ? "text-primary" : ""}`}>
+                {typeof n === "number" ? n : "—"}
               </span>
-            )}
-          </button>
-        );
-      })}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Secondary pills */}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {secondary.map((o) => {
+          const active = value === o.id;
+          const n = c[o.id];
+          return (
+            <button
+              key={o.id}
+              onClick={() => onChange(o.id)}
+              className={`inline-flex items-center gap-1.5 px-3 h-8 rounded-full text-xs font-medium border transition-colors ${
+                active
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-card text-muted-foreground hover:text-foreground border-border hover:border-primary/40"
+              }`}
+            >
+              {o.label}
+              {typeof n === "number" && (
+                <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${active ? "bg-primary-foreground/20" : "bg-muted/60"}`}>
+                  {n}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
