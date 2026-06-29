@@ -158,17 +158,20 @@ export function FollowUpSequencePanel({
     [leads, previewLeadId],
   );
 
-  // Tracker: leads that have been followed up with — any lead in follow_up/contacted/replied with contact_count > 0
+  // Tracker: leads that have actually been emailed/contacted at least once.
+  // (Was previously matching on stage alone, which pulled in untouched leads and
+  // forced them to "Step 1".)
   const followedLeads = useMemo(() => {
     return leads
-      .filter((l) => l.contact_count > 0 || ["follow_up", "contacted", "replied"].includes(l.stage))
+      .filter((l) => (l.contact_count || 0) > 0 || !!l.last_contacted_at)
       .map((l) => {
         const acts = activities.filter((a) => a.lead_id === l.id);
         const followUpActs = acts.filter((a) => a.type === "follow_up_scheduled" || a.type.startsWith("stage:contacted") || a.type === "email_generated");
-        const step = Math.min(sequence.length, Math.max(1, (l.contact_count || 0)));
+        const touches = l.contact_count || 0;
+        const step = Math.min(sequence.length, Math.max(1, touches));
         const lastTouch = followUpActs[0]?.created_at || l.last_contacted_at || l.last_activity_at || l.created_at;
         const nextDue = l.follow_up_at;
-        return { lead: l, step, touches: l.contact_count || 0, lastTouch, nextDue };
+        return { lead: l, step, touches, lastTouch, nextDue };
       })
       .sort((a, b) => new Date(b.lastTouch).getTime() - new Date(a.lastTouch).getTime());
   }, [leads, activities, sequence]);

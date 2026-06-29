@@ -1,14 +1,16 @@
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { STAGES } from "@/hooks/useSalesLeads";
-import { useSales, STAGE_META, KanbanLeadCard } from "./_shared";
+import { useSales, STAGE_META, KanbanLeadCard, StatusFilter } from "./_shared";
 
 export default function Pipeline() {
-  const { leads, setOpenLead } = useSales();
+  const { filteredLeads: leads, setOpenLead, statusFilter, setStatusFilter } = useSales();
   const [mobileStage, setMobileStage] = useState<string | null>("new");
 
   return (
     <>
+      <div className="pb-2"><StatusFilter value={statusFilter} onChange={setStatusFilter} /></div>
+
       {/* Desktop kanban */}
       <div className="hidden md:flex gap-4 overflow-x-auto scrollbar-thin pb-4 -mx-2 px-2">
         {STAGES.map((s) => {

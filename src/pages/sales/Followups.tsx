@@ -1,7 +1,12 @@
 import { FollowUpSequencePanel } from "@/components/sales/FollowUpSequencePanel";
-import { useSales } from "./_shared";
+import { useSales, StatusFilter } from "./_shared";
 
 export default function Followups() {
-  const { leads, activities, setOpenLead } = useSales();
-  return <FollowUpSequencePanel leads={leads} activities={activities} onOpenLead={setOpenLead} />;
+  const { filteredLeads, activities, setOpenLead, statusFilter, setStatusFilter } = useSales();
+  return (
+    <div className="space-y-4">
+      <StatusFilter value={statusFilter} onChange={setStatusFilter} />
+      <FollowUpSequencePanel leads={filteredLeads} activities={activities} onOpenLead={setOpenLead} />
+    </div>
+  );
 }
