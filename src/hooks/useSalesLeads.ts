@@ -36,6 +36,20 @@ export type Activity = {
   created_at: string;
 };
 
+// Single source of truth for "has this lead been worked yet?"
+export function wasContacted(l: Pick<Lead, "contact_count" | "last_contacted_at" | "stage">): boolean {
+  if ((l.contact_count || 0) > 0) return true;
+  if (l.last_contacted_at) return true;
+  return ["contacted", "follow_up", "replied", "won", "lost"].includes(l.stage);
+}
+
+// Presentation-only: if the lead has been emailed/contacted but its DB stage is still "new",
+// show it as "contacted" so the badge doesn't lie.
+export function displayStageOf(l: Pick<Lead, "contact_count" | "last_contacted_at" | "stage">): string {
+  if (l.stage === "new" && wasContacted(l)) return "contacted";
+  return l.stage;
+}
+
 export const STAGES = [
   { id: "new", label: "New" },
   { id: "queued", label: "Queued" },
@@ -118,7 +132,10 @@ export function useSalesLeads(userId: string | undefined) {
     leads.forEach((l) => { by[l.stage] = (by[l.stage] || 0) + 1; });
     const now = Date.now();
     const dueFollowUps = leads.filter((l) => l.follow_up_at && new Date(l.follow_up_at).getTime() <= now && !["replied","won","lost"].includes(l.stage)).length;
-    return { by, total: leads.length, dueFollowUps };
+    const contactedEver = leads.filter(wasContacted).length;
+    const notContacted = leads.length - contactedEver;
+    const inSequence = leads.filter((l) => (l.contact_count || 0) > 0 || !!l.last_contacted_at).length;
+    return { by, total: leads.length, dueFollowUps, contactedEver, notContacted, inSequence };
   }, [leads]);
 
   return { leads, setLeads, activities, loading, load, logActivity, updateLead, setStage, scheduleFollowUp, removeLead, stats };
