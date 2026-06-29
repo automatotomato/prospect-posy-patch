@@ -277,7 +277,7 @@ export function LeadTable({
                   {showColumn === "queued" && <>Queued {fmtDate(l.queued_at)}</>}
                   {showColumn === "updated" && <>{fmtDate(l.last_activity_at || l.created_at)}</>}
                 </div>
-                <StageBadge stage={l.stage} />
+                <StageBadge lead={l} />
                 <ChevronRight className="w-4 h-4 text-muted-foreground" />
               </button>
             </div>
@@ -310,7 +310,7 @@ export function LeadDrawer({
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <StageBadge stage={lead.stage} />
+            <StageBadge lead={lead} />
             <Button size="sm" variant="ghost" onClick={onClose} className="h-7 w-7 p-0">×</Button>
           </div>
         </div>
