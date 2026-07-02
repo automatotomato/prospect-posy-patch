@@ -67,11 +67,25 @@ export function useSalesLeads(userId: string | undefined) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [l, a] = await Promise.all([
-      supabase.from("sales_leads").select("*").order("created_at", { ascending: false }),
-      supabase.from("sales_activities").select("*").order("created_at", { ascending: false }).limit(200),
-    ]);
-    if (l.error) toast.error(l.error.message); else setLeads((l.data as Lead[]) || []);
+    // Paginate sales_leads to bypass the 1000-row default limit
+    const pageSize = 1000;
+    let offset = 0;
+    let all: Lead[] = [];
+    let leadsError: any = null;
+    while (true) {
+      const { data, error } = await supabase
+        .from("sales_leads")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .range(offset, offset + pageSize - 1);
+      if (error) { leadsError = error; break; }
+      const rows = (data as Lead[]) || [];
+      all = all.concat(rows);
+      if (rows.length < pageSize) break;
+      offset += pageSize;
+    }
+    const a = await supabase.from("sales_activities").select("*").order("created_at", { ascending: false }).limit(200);
+    if (leadsError) toast.error(leadsError.message); else setLeads(all);
     if (a.error) toast.error(a.error.message); else setActivities((a.data as Activity[]) || []);
     setLoading(false);
   }, []);
