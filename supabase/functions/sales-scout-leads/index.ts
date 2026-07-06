@@ -220,9 +220,9 @@ Deno.serve(async (req) => {
       const emails = extractEmailsFromText(text, domain);
       const email = pickBestEmail(emails);
       if (!email) return null;
-
-      let summary = "", painHypothesis = "", emailSubject = "", emailBody = "";
-      try {
+      if (seenEmails.has(email.toLowerCase())) return null; // dedupe against uploaded + prior AI leads
+      seenEmails.add(email.toLowerCase());
+      const leadType = classifyEmail(email);
         const ai = await openaiJson(
           openaiKey,
           `You are a B2B SDR for Z & C Consultants. Output strict JSON. Use ONLY the profile below as ground truth — never invent capabilities.\n\n${ZC_PROFILE}`,
