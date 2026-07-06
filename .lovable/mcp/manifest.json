@@ -1,0 +1,159 @@
+{
+  "version": 1,
+  "sdk_version": "0.20.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://wffepkaofnknklqswbwf.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "zc-consultants-mcp",
+      "version": "0.1.0",
+      "title": "Z&C Consultants Sales MCP"
+    },
+    "tools": [
+      {
+        "name": "list_sales_leads",
+        "title": "List sales leads",
+        "description": "List sales leads. Optionally filter by stage (new, queued, contacted, responded, qualified, won, lost), industry, or a search string that matches business_name/contact_name/email. Ordered by most recently created.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "stage": {
+              "type": "string",
+              "description": "Lead stage/status filter"
+            },
+            "industry": {
+              "type": "string",
+              "description": "Industry filter (exact match)"
+            },
+            "search": {
+              "type": "string",
+              "description": "Substring search on business_name, contact_name, or email"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "description": "Max rows to return (default 50)"
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_lead_details",
+        "title": "Get lead details",
+        "description": "Fetch a single sales lead with its recent activities (calls, emails, notes).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lead_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Sales lead UUID"
+            }
+          },
+          "required": [
+            "lead_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_dashboard_stats",
+        "title": "Get dashboard stats",
+        "description": "Summary of sales leads by stage plus counts of activities in the last 7 days.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_recent_activities",
+        "title": "List recent sales activities",
+        "description": "List the most recent sales activities across all leads (calls, emails, notes, status changes).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "description": "Max rows (default 25)"
+            },
+            "type": {
+              "type": "string",
+              "description": "Filter by activity type (e.g. call, email, note)"
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "add_lead_note",
+        "title": "Add a note to a lead",
+        "description": "Append a note-type activity to a sales lead. Use for AI-captured observations, next steps, or context.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lead_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Sales lead UUID"
+            },
+            "note": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Note text"
+            }
+          },
+          "required": [
+            "lead_id",
+            "note"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
