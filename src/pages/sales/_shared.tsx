@@ -128,6 +128,8 @@ export function StageBadge({ stage, lead }: { stage?: string; lead?: Pick<Lead, 
 
 /* ============ Status filter ============ */
 export type StatusFilterValue = "all" | "new" | "contacted" | "in_sequence" | "due" | "replied" | "won";
+export type OriginFilterValue = "all" | "mine" | "ai";
+export type TypeFilterValue = "all" | "direct" | "general";
 
 export function statusMatches(l: Lead, v: StatusFilterValue): boolean {
   if (v === "all") return true;
@@ -141,6 +143,74 @@ export function statusMatches(l: Lead, v: StatusFilterValue): boolean {
   if (v === "replied") return l.stage === "replied";
   if (v === "won") return l.stage === "won";
   return true;
+}
+
+export function originMatches(l: Lead, v: OriginFilterValue): boolean {
+  return v === "all" || effectiveOrigin(l) === v;
+}
+export function typeMatches(l: Lead, v: TypeFilterValue): boolean {
+  return v === "all" || effectiveLeadType(l) === v;
+}
+
+/* ============ Origin & Type badges ============ */
+export function LeadBadges({ lead, size = "sm" }: { lead: Pick<Lead, "origin" | "source" | "lead_type" | "email">; size?: "xs" | "sm" }) {
+  const origin = effectiveOrigin(lead);
+  const type = effectiveLeadType(lead);
+  const base = size === "xs" ? "text-[9px] px-1.5 py-0.5" : "text-[10px] px-1.5 py-0.5";
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span
+        className={`${base} rounded font-semibold uppercase tracking-wider border ${
+          origin === "mine"
+            ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/30"
+            : "bg-violet-500/10 text-violet-300 border-violet-500/30"
+        }`}
+        title={origin === "mine" ? "Uploaded / your contact" : "AI-scouted lead"}
+      >
+        {origin === "mine" ? "Mine" : "AI"}
+      </span>
+      <span
+        className={`${base} rounded font-semibold uppercase tracking-wider border ${
+          type === "direct"
+            ? "bg-sky-500/10 text-sky-300 border-sky-500/30"
+            : "bg-amber-500/10 text-amber-300 border-amber-500/30"
+        }`}
+        title={type === "direct" ? "Personal / decision-maker email" : "Generic mailbox (info@, sales@, …)"}
+      >
+        {type === "direct" ? "Direct" : "General"}
+      </span>
+    </span>
+  );
+}
+
+export function OriginTypeFilter({
+  origin, setOrigin, type, setType, counts,
+}: {
+  origin: OriginFilterValue; setOrigin: (v: OriginFilterValue) => void;
+  type: TypeFilterValue; setType: (v: TypeFilterValue) => void;
+  counts?: { origin?: Partial<Record<OriginFilterValue, number>>; type?: Partial<Record<TypeFilterValue, number>> };
+}) {
+  const pill = (active: boolean) =>
+    `inline-flex items-center gap-1.5 px-3 h-8 rounded-full text-xs font-medium border transition-colors ${
+      active ? "bg-primary text-primary-foreground border-primary" : "bg-card text-muted-foreground hover:text-foreground border-border hover:border-primary/40"
+    }`;
+  const num = (n?: number, active?: boolean) =>
+    typeof n === "number" ? <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${active ? "bg-primary-foreground/20" : "bg-muted/60"}`}>{n}</span> : null;
+  return (
+    <div className="flex flex-wrap gap-2 items-center">
+      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mr-1">Origin</span>
+      {(["all","mine","ai"] as OriginFilterValue[]).map((v) => {
+        const active = origin === v; const label = v === "all" ? "All" : v === "mine" ? "Mine" : "AI";
+        return <button key={v} onClick={() => setOrigin(v)} className={pill(active)}>{label}{num(counts?.origin?.[v], active)}</button>;
+      })}
+      <span className="w-px h-5 bg-border mx-1" />
+      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mr-1">Type</span>
+      {(["all","direct","general"] as TypeFilterValue[]).map((v) => {
+        const active = type === v; const label = v === "all" ? "All" : v === "direct" ? "Direct" : "General";
+        return <button key={v} onClick={() => setType(v)} className={pill(active)}>{label}{num(counts?.type?.[v], active)}</button>;
+      })}
+    </div>
+  );
 }
 
 export function ActivityIconFor({ type }: { type: string }) {
