@@ -28,6 +28,32 @@ export type Client = {
   created_at: string;
 };
 
+export async function fetchAllClients(
+  orderColumn: "created_at" | "business_name" = "created_at",
+  ascending = false,
+): Promise<{ data: Client[]; error: any }> {
+  const pageSize = 1000;
+  let offset = 0;
+  let all: Client[] = [];
+
+  while (true) {
+    const { data, error } = await supabase
+      .from("clients")
+      .select("*")
+      .order(orderColumn, { ascending })
+      .range(offset, offset + pageSize - 1);
+
+    if (error) return { data: all, error };
+
+    const rows = (data as Client[]) || [];
+    all = all.concat(rows);
+    if (rows.length < pageSize) break;
+    offset += pageSize;
+  }
+
+  return { data: all, error: null };
+}
+
 const REQUIRED_HEADERS = ["business_name"];
 const KNOWN_HEADERS = [
   "business_name", "contact_name", "email", "phone",
@@ -94,12 +120,9 @@ export function ClientsPanel() {
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("clients")
-      .select("*")
-      .order("created_at", { ascending: false });
+    const { data, error } = await fetchAllClients("created_at", false);
     if (error) toast.error(error.message);
-    setClients((data as Client[]) || []);
+    setClients(data);
     setLoading(false);
   };
 
