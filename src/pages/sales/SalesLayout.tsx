@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { useSalesLeads, type Lead, STAGES } from "@/hooks/useSalesLeads";
 import { ScanCardDialog } from "@/components/sales/ScanCardDialog";
-import { SalesContext, BulkBar, LeadDrawer, type StatusFilterValue, statusMatches } from "./_shared";
+import { SalesContext, BulkBar, LeadDrawer, type StatusFilterValue, type OriginFilterValue, type TypeFilterValue, statusMatches, originMatches, typeMatches } from "./_shared";
 import { LogWinDialog } from "@/components/sales/LogWinDialog";
 import { usePermissions } from "@/hooks/usePermissions";
 
