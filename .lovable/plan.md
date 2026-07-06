@@ -1,61 +1,115 @@
+# Leads classification, pipeline clarity, and safe daily volume
 
-## Problem
+## Why
 
-1. **Dashboard ↔ Follow-up tab numbers don't match.** The dashboard "Contacted" KPI only counts leads whose `stage` is exactly `contacted` (2 leads), while the Follow-up tracker counts anything with `contact_count > 0` **OR** stage in `contacted / follow_up / replied` (235 leads). Worse, the tracker's step math is `Math.max(1, contact_count)`, so even leads with **0 touches** get bucketed into "Step 1" — that's why 232/235 sit in Step 1.
+Right now every lead is in one bucket with a stage label. You can't tell at a glance which are your uploaded decision-maker contacts, which came from the AI scout, or which are useful "personal" emails vs generic mailboxes (info@, sales@, hr@…). That makes CPA math and team focus impossible. You also want to keep the automation running but hard-cap it at ~50 emails/day.
 
-2. **No way to filter "new vs already contacted" on the Leads pages.** A lead can show stage `new` in the table even though an email was drafted/sent, which is confusing — and the user is about to upload 2,000 leads and needs to separate fresh ones from ones already worked.
+## What you'll see in the app
 
-## Fix
+Every lead card and list row will show two chips:
 
-### A. Make the dashboard reflect reality
+- **Origin** — `Mine` (uploaded contacts) or `AI` (scout-generated)
+- **Type** — `Direct` (person@company.com) or `General` (info@, sales@, hello@, contact@, support@, admin@, office@, hr@, marketing@, billing@, careers@, team@, help@)
 
-In `src/pages/sales/Dashboard.tsx` and `src/hooks/useSalesLeads.ts`:
+The Leads Queue, Leads All, Pipeline, and Dashboard get filter dropdowns for both. The dashboard tiles split into:
 
-- Replace the single-stage "Contacted" KPI with **"Contacted (ever)"** = leads where `contact_count > 0` OR `last_contacted_at IS NOT NULL` OR stage in (`contacted`, `follow_up`, `replied`, `won`, `lost`). This matches the tracker definition.
-- Add a derived stat **"Not yet contacted"** = `total - contactedEver`, so the split adds up to total leads at a glance.
-- Add a small "Reconciliation" line under the KPI row: `X in sequence · Y awaiting first touch · Z due follow-up`, using the **same** filter the Follow-up tracker uses, so the two pages can never disagree again.
-- Compute these in `useSalesLeads` so every page reads from one source of truth.
+```text
+                Mine        AI
+Direct          123         42
+General          88         73
+```
 
-### B. Fix the Follow-up tracker step math
+so you can see exactly which slice is converting and divide spend accordingly.
 
-In `src/components/sales/FollowUpSequencePanel.tsx`:
+## Pipeline stages — one clean ladder
 
-- Only enroll a lead in the tracker when `contact_count > 0` **or** `last_contacted_at` is set (drop the loose stage check that was pulling in untouched leads).
-- Change step calc to `step = Math.min(sequence.length, contact_count)` (no `Math.max(1, …)`), so 0-touch leads aren't shown as Step 1.
-- After this, the tracker total should drop from 235 → roughly the count of leads we've actually emailed, matching the dashboard.
+Every lead moves through exactly these stages (rename/consolidate anything else):
 
-### C. Add a Status filter to the Leads pages
+```text
+new  →  queued  →  contacted  →  replied  →  meeting  →  won / lost / unsubscribed
+```
 
-In `src/pages/sales/_shared.tsx`:
+- `new`: uploaded / scouted, not yet queued for outreach
+- `queued`: draft ready, waiting for send window
+- `contacted`: at least one email sent, in the auto follow-up sequence (touches 1–5)
+- `replied`: reply intent detected (positive / neutral / negative shown as a sub-badge)
+- `meeting`: booking link clicked or manually marked
+- `won` / `lost` / `unsubscribed`: terminal
 
-- Add a new `statusFilter` to `SalesContext`: `"all" | "new" | "contacted" | "in_sequence" | "due" | "replied" | "won"`.
-- Add a `StatusFilter` component (matching `IndustryFilter` styling) — a pill/segmented control that shows counts next to each option.
-- Apply the filter inside `filteredLeads` / `queuedLeads` so all lead views respect it.
+Stage counts on the dashboard and the Kanban header will reflect this exactly, and each count breaks down by Origin × Type in a tooltip.
 
-Render the new filter alongside `IndustryFilter` in:
-- `src/pages/sales/LeadsAll.tsx`
-- `src/pages/sales/LeadsQueue.tsx`
-- `src/pages/sales/Pipeline.tsx` (above the kanban)
-- `src/pages/sales/Followups.tsx` (passed to the panel)
+## AI scout: bias toward Direct leads
 
-"New" = `contact_count = 0` AND `last_contacted_at IS NULL` regardless of stage label, so a lead the AI already emailed will no longer show up under "New".
+The AI scout will:
 
-### D. Backfill the stage badge so it doesn't lie
+1. Try to find a decision-maker email first (owner, GM, ops manager, etc.) via the existing discovery flow.
+2. Only fall back to a general mailbox if no personal email is discoverable.
+3. Tag `lead_type` on insert so the split is accurate from day one.
+4. Skip leads that would be duplicates of your uploaded `Mine` contacts (match by email lowercase).
 
-In `src/hooks/useSalesLeads.ts`, when listing leads, derive a `displayStage`:
-- If stage is `new` but `contact_count > 0` or `last_contacted_at` set → show as `contacted` in the badge.
-- Underlying DB stage is unchanged; this is presentation only so the user isn't misled.
+## Daily send cap: 50/day
 
-## Out of scope
+The hourly follow-up worker will check how many auto-sends have gone out in the last 24h before drafting anything. Once 50 sends is reached, the run returns `skipped_daily_cap` and waits for the next window. This is a hard ceiling across both `Mine` and `AI` leads combined, adjustable from an admin setting later.
 
-- No schema changes, no edge function changes.
-- No changes to send/drip logic.
-- Industry filter behavior unchanged.
+## CPA tracking
 
-## Files touched
+A tiny `lead_costs` config (single row for now) lets you enter:
 
-- `src/hooks/useSalesLeads.ts` — extra derived stats + displayStage helper
-- `src/pages/sales/_shared.tsx` — status filter state, `StatusFilter` component, updated `filteredLeads`, `StageBadge` uses `displayStage`
-- `src/pages/sales/Dashboard.tsx` — KPI swap + reconciliation line
-- `src/pages/sales/LeadsAll.tsx`, `LeadsQueue.tsx`, `Pipeline.tsx`, `Followups.tsx` — render `StatusFilter`
-- `src/components/sales/FollowUpSequencePanel.tsx` — corrected enrollment + step math
+- Cost per AI lead (avg)
+- Cost per uploaded lead (avg, from your marketing spend)
+
+The dashboard multiplies these against `won` counts per Origin × Type to show a live CPA figure per slice. You can update the numbers as your spend changes.
+
+---
+
+## Technical section
+
+### Database
+
+Migration on `public.sales_leads`:
+
+- Add `lead_type text check (lead_type in ('direct','general'))`
+- Add `origin text check (origin in ('mine','ai'))` (derived from existing `source` in a backfill; keep `source` for raw provenance)
+- Backfill:
+  - `origin = 'mine'` where `source = 'my_contacts'`, else `'ai'`
+  - `lead_type = 'general'` where email local-part matches the generic-mailbox list, else `'direct'`
+- Add `stage` check constraint enforcing the ladder above; migrate any legacy values (`drafted` → `queued`, unknown → `new`).
+- Add index on `(origin, lead_type, stage)` for dashboard queries.
+
+New table `public.lead_costs` (single-row keyed by `id = 'default'`):
+
+- `ai_cost_per_lead numeric`, `mine_cost_per_lead numeric`, `updated_at`
+- RLS: admins read/write, everyone else read.
+
+### Follow-up worker (`process-lead-followups`)
+
+- Before drafting: `select count(*) from sales_activities where type='email_sent' and metadata->>'auto'='true' and created_at > now() - interval '24 hours'`.
+- If count ≥ 50, return `{ ok:true, skipped:'daily_cap', sent_last_24h: count }`.
+- Otherwise cap the batch to `min(BATCH_SIZE, 50 - count)`.
+
+### AI scout (`sales-discover-leads` / `sales-scout-leads`)
+
+- Prompt updates: require decision-maker role, personal email preferred, list generic mailboxes as fallback-only.
+- On insert, compute `lead_type` from email prefix and set `origin='ai'`.
+- Dedupe against existing `email` (case-insensitive) before insert.
+
+### UI
+
+- `src/hooks/useSalesLeads.ts`: extend query + filter args with `origin`, `lead_type`.
+- Shared badge component `<LeadBadges lead />` rendering Origin + Type chips.
+- Pages: `LeadsQueue`, `LeadsAll`, `Pipeline`, `Followups`, `Dashboard` get:
+  - Two `<Select>` filters (Origin, Type)
+  - Badges on every card / row
+- `Dashboard`: 2×2 breakdown tile per stage; CPA tile pulling from `lead_costs`.
+- `SalesLayout` sidebar: stage counts scoped to current filters.
+
+### Reconciliation
+
+Extend `reconcile-lead-statuses` to also:
+
+- Normalize any legacy `stage` values to the ladder.
+- Recompute `lead_type` for rows where it is null (new uploads that predate the migration).
+
+### Docs / plan file
+
+Update `.lovable/plan.md` with the classification model and the 50/day cap so future work stays consistent.
