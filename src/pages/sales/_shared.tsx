@@ -337,9 +337,13 @@ export function LeadTable({
                   <Building2 className="w-4 h-4" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="font-medium truncate">{l.business_name}</div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium truncate">{l.business_name}</span>
+                    <LeadBadges lead={l} size="xs" />
+                  </div>
                   <div className="text-xs text-muted-foreground truncate">
                     {[l.industry, l.city, l.state].filter(Boolean).join(" · ") || "—"}
+                    {l.email && <> · {l.email}</>}
                     {l.phone && <> · {l.phone}</>}
                   </div>
                 </div>
