@@ -109,8 +109,23 @@ function extractEmailsFromText(text: string, domain: string | null): string[] {
   return unique;
 }
 
+const GENERIC_PREFIXES = new Set([
+  "info","sales","hello","contact","support","admin","office","hr",
+  "marketing","billing","careers","team","help","no-reply","noreply",
+  "accounts","accounting","service","services","enquiries","inquiries",
+  "general","reception","front-desk","frontdesk","feedback","press","media",
+]);
+function classifyEmail(email: string): "direct" | "general" {
+  const local = (email || "").split("@")[0]?.toLowerCase() || "";
+  return GENERIC_PREFIXES.has(local) ? "general" : "direct";
+}
+
 function pickBestEmail(emails: string[]): string | null {
   if (!emails.length) return null;
+  // 1) any personal / decision-maker email first
+  const direct = emails.find((e) => classifyEmail(e) === "direct");
+  if (direct) return direct;
+  // 2) then role-based priority for the least-generic fallback
   const priority = [/^(ceo|founder|owner|president|director|manager)@/, /^(sales|hello|team)@/, /^(info|contact|office|admin)@/];
   for (const re of priority) {
     const hit = emails.find((e) => re.test(e));
