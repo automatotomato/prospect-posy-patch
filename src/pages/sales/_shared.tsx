@@ -45,6 +45,10 @@ export type SalesCtx = {
   setIndustryFilter: (s: string) => void;
   statusFilter: StatusFilterValue;
   setStatusFilter: (s: StatusFilterValue) => void;
+  originFilter: OriginFilterValue;
+  setOriginFilter: (v: OriginFilterValue) => void;
+  typeFilter: TypeFilterValue;
+  setTypeFilter: (v: TypeFilterValue) => void;
 
   // drawer
   openLead: Lead | null;
