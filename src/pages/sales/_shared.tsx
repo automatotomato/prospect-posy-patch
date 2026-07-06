@@ -858,12 +858,27 @@ export function StatusFilter({
   onChange: (v: StatusFilterValue) => void;
   counts?: Partial<Record<StatusFilterValue, number>>;
 }) {
-  // Auto-derive counts from context when caller doesn't provide them, so the
-  // New vs Contacted split is always visible.
+  // Auto-derive counts from context when caller doesn't provide them. Counts
+  // reflect *all other* active filters (industry, origin, type, search) so the
+  // numbers on each pill match what the list will actually show.
   const ctx = useContext(SalesContext);
   const base = ctx?.leads ?? [];
   const scoped = ctx
-    ? base.filter((l) => ctx.industryFilter === "all" || (l.industry || "") === ctx.industryFilter)
+    ? base.filter((l) => {
+        if (ctx.industryFilter !== "all" && (l.industry || "") !== ctx.industryFilter) return false;
+        if (!originMatches(l, ctx.originFilter)) return false;
+        if (!typeMatches(l, ctx.typeFilter)) return false;
+        if (ctx.search.trim()) {
+          const q = ctx.search.toLowerCase();
+          if (!(
+            l.business_name.toLowerCase().includes(q) ||
+            (l.city || "").toLowerCase().includes(q) ||
+            (l.industry || "").toLowerCase().includes(q) ||
+            (l.email || "").toLowerCase().includes(q)
+          )) return false;
+        }
+        return true;
+      })
     : [];
   const auto: Partial<Record<StatusFilterValue, number>> = ctx ? {
     all:         scoped.length,
