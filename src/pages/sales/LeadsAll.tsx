@@ -3,17 +3,32 @@ import { useSales, LeadTable, IndustryFilter, StatusFilter, OriginTypeFilter, st
 
 export default function LeadsAll() {
   const {
-    leads, filteredLeads, loading, setOpenLead, selected, toggleOne,
+    leads, loading, setOpenLead, selected, toggleOne,
     industries, industryFilter, setIndustryFilter,
     statusFilter, setStatusFilter,
     originFilter, setOriginFilter, typeFilter, setTypeFilter,
     search,
   } = useSales();
 
+  const q = search.trim().toLowerCase();
+
+  const displayedLeads = useMemo(() => leads.filter((l) => {
+    if (industryFilter !== "all" && (l.industry || "") !== industryFilter) return false;
+    if (!statusMatches(l, statusFilter)) return false;
+    if (originFilter !== "all" && effectiveOrigin(l) !== originFilter) return false;
+    if (typeFilter !== "all" && effectiveLeadType(l) !== typeFilter) return false;
+    if (q && !(
+      l.business_name.toLowerCase().includes(q) ||
+      (l.city || "").toLowerCase().includes(q) ||
+      (l.industry || "").toLowerCase().includes(q) ||
+      (l.email || "").toLowerCase().includes(q)
+    )) return false;
+    return true;
+  }), [leads, industryFilter, statusFilter, originFilter, typeFilter, q]);
+
   // Origin/Type counts reflect every OTHER active filter (industry, status, search)
   // so the pill numbers match what the list actually shows.
   const originTypeCounts = useMemo(() => {
-    const q = search.trim().toLowerCase();
     const matchesOther = (l: typeof leads[number]) => {
       if (industryFilter !== "all" && (l.industry || "") !== industryFilter) return false;
       if (!statusMatches(l, statusFilter)) return false;
@@ -39,7 +54,7 @@ export default function LeadsAll() {
         general: scopedForType.filter((l) => effectiveLeadType(l) === "general").length,
       },
     };
-  }, [leads, industryFilter, statusFilter, originFilter, typeFilter, search]);
+  }, [leads, industryFilter, statusFilter, originFilter, typeFilter, q]);
 
   return (
     <div className="space-y-4">
@@ -47,7 +62,7 @@ export default function LeadsAll() {
         value={industryFilter}
         onChange={setIndustryFilter}
         industries={industries}
-        count={filteredLeads.length}
+        count={displayedLeads.length}
       />
       <OriginTypeFilter
         origin={originFilter} setOrigin={setOriginFilter}
@@ -56,7 +71,7 @@ export default function LeadsAll() {
       />
       {/* StatusFilter derives its own counts from context, respecting all other filters */}
       <StatusFilter value={statusFilter} onChange={setStatusFilter} />
-      <LeadTable leads={filteredLeads} loading={loading} emptyText="No leads match the current filters." onOpen={setOpenLead} showColumn="updated" selected={selected} onToggle={toggleOne} />
+      <LeadTable leads={displayedLeads} loading={loading} emptyText="No leads match the current filters." onOpen={setOpenLead} showColumn="updated" selected={selected} onToggle={toggleOne} />
     </div>
   );
 }
