@@ -24,6 +24,10 @@ import HowItWorks from "./pages/sales/HowItWorks";
 import SalesSettings from "./pages/sales/Settings";
 import Approvals from "./pages/sales/Approvals";
 import Wins from "./pages/sales/Wins";
+import OAuthConsent from "./pages/OAuthConsent";
+
+
+
 
 
 
@@ -38,6 +42,7 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
             <Route path="/sales/login" element={<SalesLogin />} />
             <Route path="/sales/set-password" element={<SetPassword />} />
             <Route path="/sales" element={<ProtectedRoute><SalesLayout /></ProtectedRoute>}>
