@@ -575,6 +575,30 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_costs: {
+        Row: {
+          ai_cost_per_lead: number
+          daily_send_cap: number
+          id: string
+          mine_cost_per_lead: number
+          updated_at: string
+        }
+        Insert: {
+          ai_cost_per_lead?: number
+          daily_send_cap?: number
+          id?: string
+          mine_cost_per_lead?: number
+          updated_at?: string
+        }
+        Update: {
+          ai_cost_per_lead?: number
+          daily_send_cap?: number
+          id?: string
+          mine_cost_per_lead?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -952,7 +976,9 @@ export type Database = {
           industry: string | null
           last_activity_at: string | null
           last_contacted_at: string | null
+          lead_type: string | null
           notes: string | null
+          origin: string | null
           owner_id: string
           phone: string | null
           queued_at: string | null
@@ -978,7 +1004,9 @@ export type Database = {
           industry?: string | null
           last_activity_at?: string | null
           last_contacted_at?: string | null
+          lead_type?: string | null
           notes?: string | null
+          origin?: string | null
           owner_id: string
           phone?: string | null
           queued_at?: string | null
@@ -1004,7 +1032,9 @@ export type Database = {
           industry?: string | null
           last_activity_at?: string | null
           last_contacted_at?: string | null
+          lead_type?: string | null
           notes?: string | null
+          origin?: string | null
           owner_id?: string
           phone?: string | null
           queued_at?: string | null
