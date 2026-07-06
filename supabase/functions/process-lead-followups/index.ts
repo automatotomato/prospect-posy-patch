@@ -207,7 +207,14 @@ ${draft.body.split("\n").map((ln) => ln.trim() ? `<p style="margin:0 0 16px 0;">
   }
 
   return new Response(
-    JSON.stringify({ ok: true, ran_at: nowIso, considered: dueLeads?.length ?? 0, sent: results.filter((r) => r.ok).length, results }),
+    JSON.stringify({
+      ok: true, ran_at: nowIso,
+      considered: dueLeads?.length ?? 0,
+      sent: results.filter((r) => r.ok).length,
+      sent_last_24h: alreadySent + results.filter((r) => r.ok).length,
+      daily_cap: dailyCap,
+      results,
+    }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } },
   );
 });
