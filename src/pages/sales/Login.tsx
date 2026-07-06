@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,26 +11,17 @@ import { supabase } from "@/integrations/supabase/client";
 
 const APP_URL = "https://zcconsultants.automateplanet.com";
 
-function safeNext(raw: string | null): string {
-  if (!raw) return "/sales";
-  // Only allow same-origin relative paths.
-  if (!raw.startsWith("/") || raw.startsWith("//")) return "/sales";
-  return raw;
-}
-
 export default function SalesLogin() {
   const { user, signInWithPassword } = useAuth();
   const navigate = useNavigate();
-  const [params] = useSearchParams();
-  const next = safeNext(params.get("next"));
   const [email, setEmail] = useState("management@z-cconsultants.com");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [sendingReset, setSendingReset] = useState(false);
 
   useEffect(() => {
-    if (user) navigate(next, { replace: true });
-  }, [user, navigate, next]);
+    if (user) navigate("/sales", { replace: true });
+  }, [user, navigate]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,7 +31,7 @@ export default function SalesLogin() {
     if (error) {
       toast.error(error.message);
     } else {
-      navigate(next, { replace: true });
+      navigate("/sales", { replace: true });
     }
   };
 
