@@ -113,3 +113,15 @@ Extend `reconcile-lead-statuses` to also:
 ### Docs / plan file
 
 Update `.lovable/plan.md` with the classification model and the 50/day cap so future work stays consistent.
+
+---
+
+# Update: lead classification + daily send cap (shipped)
+
+- Every lead is tagged with `origin` (mine|ai) and `lead_type` (direct|general) at write time.
+- Uploaded contacts (ClientsPanel → "Send to pipeline") tag as `origin=mine`, and `lead_type` from the email prefix.
+- AI scout (`sales-scout-leads`) prefers personal decision-maker emails, falls back to generic mailboxes only if none discoverable, dedupes against every existing lead email, and inserts with `origin=ai` + `lead_type`.
+- Auto follow-up worker (`process-lead-followups`) reads `lead_costs.daily_send_cap` (default 50) and refuses to draft/send once 24h auto-sends hit the cap.
+- `lead_costs` table stores AI cost per lead, Mine cost per lead, daily_send_cap. Admins can edit from Dashboard → "Edit costs".
+- Dashboard: 2x2 Origin×Type matrix, per-origin CPA tile, and a "Sent last 24h / cap" tile.
+- Reconciler backfills `origin`/`lead_type` on any legacy row missing them.
