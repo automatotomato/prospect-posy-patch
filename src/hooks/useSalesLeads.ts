@@ -2,6 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+export type LeadOrigin = "mine" | "ai";
+export type LeadType = "direct" | "general";
+
 export type Lead = {
   id: string;
   business_name: string;
@@ -23,7 +26,34 @@ export type Lead = {
   last_activity_at: string | null;
   created_at: string;
   assigned_to: string | null;
+  origin: LeadOrigin | null;
+  lead_type: LeadType | null;
+  source: string | null;
 };
+
+// Generic mailbox prefixes — used as a client-side fallback to compute lead_type
+// if a row was inserted before the backfill (defense in depth).
+const GENERIC_PREFIXES = new Set([
+  "info","sales","hello","contact","support","admin","office","hr",
+  "marketing","billing","careers","team","help","no-reply","noreply",
+  "accounts","accounting","service","services","enquiries","inquiries",
+  "general","reception","front-desk","frontdesk","feedback","press","media",
+]);
+
+export function computeLeadType(email: string | null | undefined): LeadType {
+  if (!email) return "general";
+  const local = email.trim().toLowerCase().split("@")[0] || "";
+  return GENERIC_PREFIXES.has(local) ? "general" : "direct";
+}
+
+export function effectiveLeadType(l: Pick<Lead, "lead_type" | "email">): LeadType {
+  return l.lead_type ?? computeLeadType(l.email);
+}
+
+export function effectiveOrigin(l: Pick<Lead, "origin" | "source">): LeadOrigin {
+  if (l.origin) return l.origin;
+  return l.source === "my_contacts" || l.source === "upload" || l.source === "scan" || l.source === "business_card" ? "mine" : "ai";
+}
 
 
 export type Activity = {

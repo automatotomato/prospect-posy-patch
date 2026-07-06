@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { useSalesLeads, type Lead, STAGES } from "@/hooks/useSalesLeads";
 import { ScanCardDialog } from "@/components/sales/ScanCardDialog";
-import { SalesContext, BulkBar, LeadDrawer, type StatusFilterValue, statusMatches } from "./_shared";
+import { SalesContext, BulkBar, LeadDrawer, type StatusFilterValue, type OriginFilterValue, type TypeFilterValue, statusMatches, originMatches, typeMatches } from "./_shared";
 import { LogWinDialog } from "@/components/sales/LogWinDialog";
 import { usePermissions } from "@/hooks/usePermissions";
 
@@ -93,6 +93,8 @@ export default function SalesLayout() {
   const [search, setSearch] = useState("");
   const [industryFilter, setIndustryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("all");
+  const [originFilter, setOriginFilter] = useState<OriginFilterValue>("all");
+  const [typeFilter, setTypeFilter] = useState<TypeFilterValue>("all");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
   const [winLead, setWinLead] = useState<Lead | null>(null);
@@ -171,17 +173,20 @@ export default function SalesLayout() {
   const matchesFilters = (l: Lead) => {
     if (industryFilter !== "all" && (l.industry || "") !== industryFilter) return false;
     if (!statusMatches(l, statusFilter)) return false;
+    if (!originMatches(l, originFilter)) return false;
+    if (!typeMatches(l, typeFilter)) return false;
     if (!search.trim()) return true;
     const q = search.toLowerCase();
     return (
       l.business_name.toLowerCase().includes(q) ||
       (l.city || "").toLowerCase().includes(q) ||
-      (l.industry || "").toLowerCase().includes(q)
+      (l.industry || "").toLowerCase().includes(q) ||
+      (l.email || "").toLowerCase().includes(q)
     );
   };
 
-  const queuedLeads = useMemo(() => leads.filter((l) => l.stage === "queued" && matchesFilters(l)), [leads, search, industryFilter, statusFilter]);
-  const filteredLeads = useMemo(() => leads.filter(matchesFilters), [leads, search, industryFilter, statusFilter]);
+  const queuedLeads = useMemo(() => leads.filter((l) => l.stage === "queued" && matchesFilters(l)), [leads, search, industryFilter, statusFilter, originFilter, typeFilter]);
+  const filteredLeads = useMemo(() => leads.filter(matchesFilters), [leads, search, industryFilter, statusFilter, originFilter, typeFilter]);
 
   const initials = (user?.email || "ZC").slice(0, 2).toUpperCase();
 
@@ -257,6 +262,8 @@ export default function SalesLayout() {
     search, setSearch,
     industries, industryFilter, setIndustryFilter,
     statusFilter, setStatusFilter,
+    originFilter, setOriginFilter,
+    typeFilter, setTypeFilter,
     openLead, setOpenLead, generate, generatingId, copy, copiedId,
     selected, toggleOne, clearSelection, selectMany, bulkDelete, bulkSetStage, bulkUpdate, bulkScheduleFollowUp, bulkAssign,
     discovering, discover, lastScout,

@@ -114,6 +114,8 @@ Deno.serve(async (req) => {
         state: stateAbbr,
         industry: vertical,
         source: "google_places",
+        origin: "ai",
+        lead_type: "general",
         status: "new",
       }).select().single();
       if (!error && data) inserted.push(data);
