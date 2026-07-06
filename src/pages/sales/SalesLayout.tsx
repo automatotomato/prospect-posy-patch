@@ -173,17 +173,20 @@ export default function SalesLayout() {
   const matchesFilters = (l: Lead) => {
     if (industryFilter !== "all" && (l.industry || "") !== industryFilter) return false;
     if (!statusMatches(l, statusFilter)) return false;
+    if (!originMatches(l, originFilter)) return false;
+    if (!typeMatches(l, typeFilter)) return false;
     if (!search.trim()) return true;
     const q = search.toLowerCase();
     return (
       l.business_name.toLowerCase().includes(q) ||
       (l.city || "").toLowerCase().includes(q) ||
-      (l.industry || "").toLowerCase().includes(q)
+      (l.industry || "").toLowerCase().includes(q) ||
+      (l.email || "").toLowerCase().includes(q)
     );
   };
 
-  const queuedLeads = useMemo(() => leads.filter((l) => l.stage === "queued" && matchesFilters(l)), [leads, search, industryFilter, statusFilter]);
-  const filteredLeads = useMemo(() => leads.filter(matchesFilters), [leads, search, industryFilter, statusFilter]);
+  const queuedLeads = useMemo(() => leads.filter((l) => l.stage === "queued" && matchesFilters(l)), [leads, search, industryFilter, statusFilter, originFilter, typeFilter]);
+  const filteredLeads = useMemo(() => leads.filter(matchesFilters), [leads, search, industryFilter, statusFilter, originFilter, typeFilter]);
 
   const initials = (user?.email || "ZC").slice(0, 2).toUpperCase();
 
