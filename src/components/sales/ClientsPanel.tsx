@@ -191,10 +191,12 @@ export function ClientsPanel() {
       .in("email", emails);
     const existingSet = new Set((existing || []).map((r: any) => (r.email || "").toLowerCase()));
 
+    const GENERIC = new Set(["info","sales","hello","contact","support","admin","office","hr","marketing","billing","careers","team","help","no-reply","noreply","accounts","accounting","service","services","enquiries","inquiries","general","reception","front-desk","frontdesk","feedback","press","media"]);
     const rows = withEmail
       .filter((c) => !existingSet.has(c.email!.toLowerCase()))
       .map((c) => {
         const [city, state] = (c.location || "").split(",").map((s) => s.trim());
+        const local = (c.email || "").toLowerCase().split("@")[0];
         return {
           owner_id: ownerId,
           business_name: c.business_name,
@@ -204,6 +206,8 @@ export function ClientsPanel() {
           state: state || null,
           industry: c.industry,
           source: "my_contacts",
+          origin: "mine",
+          lead_type: GENERIC.has(local) ? "general" : "direct",
           status: "new",
           stage: "new",
         };
