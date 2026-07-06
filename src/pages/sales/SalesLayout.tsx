@@ -262,6 +262,8 @@ export default function SalesLayout() {
     search, setSearch,
     industries, industryFilter, setIndustryFilter,
     statusFilter, setStatusFilter,
+    originFilter, setOriginFilter,
+    typeFilter, setTypeFilter,
     openLead, setOpenLead, generate, generatingId, copy, copiedId,
     selected, toggleOne, clearSelection, selectMany, bulkDelete, bulkSetStage, bulkUpdate, bulkScheduleFollowUp, bulkAssign,
     discovering, discover, lastScout,
