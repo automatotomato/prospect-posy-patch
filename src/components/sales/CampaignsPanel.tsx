@@ -11,7 +11,7 @@ import { Mail, Plus, Play, Pause, Trash2, RefreshCw, ChevronRight, Users, Clock,
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import type { Client, ClientType } from "./ClientsPanel";
-import { TYPE_LABEL } from "./ClientsPanel";
+import { fetchAllClients, TYPE_LABEL } from "./ClientsPanel";
 
 type CampaignStatus = "draft" | "active" | "paused" | "completed";
 
@@ -220,11 +220,9 @@ function CampaignDialog({ campaignId, open, onOpenChange, onDone, presetName, pr
   useEffect(() => {
     if (!open) return;
     (async () => {
-      const { data: cdata } = await supabase
-        .from("clients")
-        .select("*")
-        .order("business_name");
-      setClients((cdata as Client[]) || []);
+      const { data: cdata, error: clientsError } = await fetchAllClients("business_name", true);
+      if (clientsError) toast.error(clientsError.message);
+      setClients(cdata);
 
       if (isEdit && campaignId) {
         const { data } = await supabase
@@ -543,8 +541,9 @@ function SegmentAssistantDialog({ open, onOpenChange, onUseSegment }: {
     }]);
     setSegment(null); setInput("");
     (async () => {
-      const { data } = await supabase.from("clients").select("*");
-      setClients((data as Client[]) || []);
+      const { data, error } = await fetchAllClients("business_name", true);
+      if (error) toast.error(error.message);
+      setClients(data);
     })();
   }, [open]);
 
