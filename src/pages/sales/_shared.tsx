@@ -301,6 +301,7 @@ export function LeadTable({
     return <div className="bg-card border border-border rounded-2xl p-8 text-sm text-muted-foreground text-center">{emptyText}</div>;
   const allSelected = !!selected && leads.length > 0 && leads.every((l) => selected.has(l.id));
   const someSelected = !!selected && leads.some((l) => selected.has(l.id)) && !allSelected;
+  const rowsKey = `${leads.length}:${leads[0]?.id || ""}:${leads[leads.length - 1]?.id || ""}`;
   return (
     <div className="bg-card border border-border rounded-2xl overflow-hidden">
       {onToggle && (
@@ -318,11 +319,11 @@ export function LeadTable({
           </span>
         </div>
       )}
-      <div className="divide-y divide-border">
-        {leads.map((l) => {
+      <div key={rowsKey} className="divide-y divide-border">
+        {leads.map((l, index) => {
           const isSelected = selected?.has(l.id);
           return (
-            <div key={l.id}
+            <div key={`${l.id}-${index}`}
               className={`w-full px-5 py-3 hover:bg-muted/30 flex items-center gap-4 transition-colors ${isSelected ? "bg-primary/5" : ""}`}>
               {onToggle && (
                 <Checkbox
