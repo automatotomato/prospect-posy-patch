@@ -16,8 +16,8 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { STAGES, type Lead, wasContacted, displayStageOf } from "@/hooks/useSalesLeads";
-export { wasContacted, displayStageOf };
+import { STAGES, type Lead, type LeadOrigin, type LeadType, wasContacted, displayStageOf, effectiveOrigin, effectiveLeadType } from "@/hooks/useSalesLeads";
+export { wasContacted, displayStageOf, effectiveOrigin, effectiveLeadType };
 
 /* ============ Context ============ */
 
