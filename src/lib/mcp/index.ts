@@ -1,3 +1,4 @@
+/// <reference path="./env.d.ts" />
 import { auth, defineMcp } from "@lovable.dev/mcp-js";
 import listLeads from "./tools/list-leads";
 import getLead from "./tools/get-lead";
