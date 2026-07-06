@@ -175,15 +175,28 @@ Deno.serve(async (req) => {
     const cities = STATES[state].cities;
     const inserted: any[] = [];
     const seenDomains = new Set<string>();
+    const seenEmails = new Set<string>();
     let candidatesProcessed = 0;
 
-    // Pull existing emails/domains to dedupe
-    const { data: existing } = await admin.from("sales_leads").select("email,website").eq("owner_id", userId);
-    (existing || []).forEach((r: any) => {
-      const d = domainFromUrl(r.website);
-      if (d) seenDomains.add(d);
-      if (r.email) seenDomains.add(r.email.toLowerCase().split("@")[1] || "");
-    });
+    // Pull ALL existing leads (across owners) so AI doesn't duplicate uploaded
+    // contacts either. Paginate to bypass the default 1000-row cap.
+    let offset = 0;
+    while (true) {
+      const { data: existing, error: exErr } = await admin.from("sales_leads")
+        .select("email,website").range(offset, offset + 999);
+      if (exErr || !existing || existing.length === 0) break;
+      for (const r of existing as any[]) {
+        const d = domainFromUrl(r.website);
+        if (d) seenDomains.add(d);
+        if (r.email) {
+          const e = r.email.toLowerCase();
+          seenEmails.add(e);
+          seenDomains.add(e.split("@")[1] || "");
+        }
+      }
+      if (existing.length < 1000) break;
+      offset += 1000;
+    }
 
     // Shuffle queries & cities
     const shuffled = (arr: string[]) => arr.map((v) => [Math.random(), v] as const).sort((a, b) => a[0] - b[0]).map(([, v]) => v);
