@@ -36,17 +36,25 @@ export async function fetchAllClients(
   let offset = 0;
   let all: Client[] = [];
 
+  const seen = new Set<string>();
+
   while (true) {
     const { data, error } = await supabase
       .from("clients")
       .select("*")
       .order(orderColumn, { ascending })
+      .order("id", { ascending: true })
       .range(offset, offset + pageSize - 1);
 
     if (error) return { data: all, error };
 
     const rows = (data as Client[]) || [];
-    all = all.concat(rows);
+    // De-dupe across pages in case rows shift between range queries.
+    for (const r of rows) {
+      if (seen.has(r.id)) continue;
+      seen.add(r.id);
+      all.push(r);
+    }
     if (rows.length < pageSize) break;
     offset += pageSize;
   }
