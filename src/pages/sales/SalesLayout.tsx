@@ -223,7 +223,7 @@ export default function SalesLayout() {
         {leadsOpen && (
           <div className="ml-7 mt-1 space-y-1 border-l border-border pl-3">
             <SideNav to="/sales/leads" end label="All Leads" onClick={() => setMobileNavOpen(false)} subtle />
-            <SideNav to="/sales/leads/queue" label="Queue" badge={queuedLeads.length || undefined} onClick={() => setMobileNavOpen(false)} subtle />
+            <SideNav to="/sales/leads/queue" label="Queue" badge={stats.by.queued || undefined} onClick={() => setMobileNavOpen(false)} subtle />
             <SideNav to="/sales/leads/contacts" label="My Contacts" onClick={() => setMobileNavOpen(false)} subtle />
           </div>
         )}
