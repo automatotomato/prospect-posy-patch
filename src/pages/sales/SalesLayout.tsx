@@ -93,6 +93,8 @@ export default function SalesLayout() {
   const [search, setSearch] = useState("");
   const [industryFilter, setIndustryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("all");
+  const [originFilter, setOriginFilter] = useState<OriginFilterValue>("all");
+  const [typeFilter, setTypeFilter] = useState<TypeFilterValue>("all");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
   const [winLead, setWinLead] = useState<Lead | null>(null);
