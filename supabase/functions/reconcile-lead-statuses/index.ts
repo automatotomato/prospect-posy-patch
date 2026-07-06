@@ -13,20 +13,29 @@ Deno.serve(async (req) => {
     const nowIso = new Date().toISOString();
     const results: Record<string, number> = {};
 
-    // 1) Leads that DO have touches but are still stage='new' → 'contacted'
+    // 1) Any lead with touch evidence must live in 'contacted' (never 'new'/'queued')
     const { data: toContacted, error: e1 } = await supabase
       .from('sales_leads')
-      .select('id')
-      .eq('stage', 'new')
+      .select('id, last_contacted_at, follow_up_at')
+      .in('stage', ['new', 'queued'])
       .or('contact_count.gt.0,last_contacted_at.not.is.null');
     if (e1) throw e1;
     if (toContacted && toContacted.length) {
+      // Bulk update stage
       const ids = toContacted.map((r: any) => r.id);
       const { error } = await supabase
         .from('sales_leads')
         .update({ stage: 'contacted', last_activity_at: nowIso })
         .in('id', ids);
       if (error) throw error;
+
+      // Ensure each has a follow_up_at so the follow-up worker will pick it up
+      const backfill = toContacted.filter((r: any) => !r.follow_up_at);
+      for (const row of backfill) {
+        const base = row.last_contacted_at ? new Date(row.last_contacted_at) : new Date();
+        const due = new Date(base.getTime() + 4 * 86_400_000).toISOString();
+        await supabase.from('sales_leads').update({ follow_up_at: due }).eq('id', row.id);
+      }
     }
     results.moved_to_contacted = toContacted?.length ?? 0;
 
