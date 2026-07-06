@@ -74,6 +74,31 @@ Deno.serve(async (req) => {
     }
     results.backfilled_queued_at = missingQueuedAt?.length ?? 0;
 
+    // 4) Backfill origin / lead_type on rows missing them (e.g. added before migration)
+    const GENERIC = ['info','sales','hello','contact','support','admin','office','hr','marketing','billing','careers','team','help','no-reply','noreply','accounts','accounting','service','services','enquiries','inquiries','general','reception','front-desk','frontdesk','feedback','press','media'];
+    const { data: unclassified, error: e4 } = await supabase
+      .from('sales_leads')
+      .select('id, email, source, origin, lead_type');
+    if (e4) throw e4;
+    let originFixes = 0, typeFixes = 0;
+    for (const r of (unclassified as any[]) || []) {
+      const patch: Record<string, string> = {};
+      if (!r.origin) {
+        patch.origin = ['my_contacts','upload','scan','business_card'].includes(r.source) ? 'mine' : 'ai';
+      }
+      if (!r.lead_type) {
+        const local = (r.email || '').toLowerCase().split('@')[0] || '';
+        patch.lead_type = !r.email || GENERIC.includes(local) ? 'general' : 'direct';
+      }
+      if (Object.keys(patch).length) {
+        await supabase.from('sales_leads').update(patch).eq('id', r.id);
+        if (patch.origin) originFixes++;
+        if (patch.lead_type) typeFixes++;
+      }
+    }
+    results.origin_backfilled = originFixes;
+    results.lead_type_backfilled = typeFixes;
+
     return new Response(
       JSON.stringify({ ok: true, ran_at: nowIso, ...results }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
