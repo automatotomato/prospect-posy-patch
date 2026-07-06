@@ -271,17 +271,14 @@ export function KanbanLeadCard({ lead, onClick }: { lead: Lead; onClick: () => v
       className={`w-full text-left bg-card hover:bg-secondary/50 border border-border border-l-2 ${meta?.tint || "border-l-border"} rounded-xl p-3 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/5 group`}
     >
       <div className="flex justify-between items-start gap-2 mb-2">
-        {lead.industry ? (
-          <span className="text-[9px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded uppercase tracking-wider truncate max-w-[140px]">
-            {lead.industry}
-          </span>
-        ) : <span />}
+        <LeadBadges lead={lead} size="xs" />
         <span className="text-[10px] text-muted-foreground shrink-0">{fmtDate(lead.last_activity_at || lead.created_at)}</span>
       </div>
       <h4 className="text-sm font-semibold leading-snug group-hover:text-primary transition-colors line-clamp-2">
         {lead.business_name}
       </h4>
       <div className="flex items-center gap-3 mt-2 text-[10px] text-muted-foreground">
+        {lead.industry && <span className="truncate max-w-[130px]">{lead.industry}</span>}
         {lead.city && <span className="flex items-center gap-1 truncate"><MapPin className="w-2.5 h-2.5" />{lead.city}</span>}
         {lead.contact_count > 0 && <span className="flex items-center gap-1"><Send className="w-2.5 h-2.5" />{lead.contact_count}</span>}
         {lead.email_body && <span className="flex items-center gap-1 text-primary"><Sparkles className="w-2.5 h-2.5" />Drafted</span>}
