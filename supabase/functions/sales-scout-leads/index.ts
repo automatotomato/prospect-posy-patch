@@ -223,6 +223,9 @@ Deno.serve(async (req) => {
       if (seenEmails.has(email.toLowerCase())) return null; // dedupe against uploaded + prior AI leads
       seenEmails.add(email.toLowerCase());
       const leadType = classifyEmail(email);
+
+      let summary = "", painHypothesis = "", emailSubject = "", emailBody = "";
+      try {
         const ai = await openaiJson(
           openaiKey,
           `You are a B2B SDR for Z & C Consultants. Output strict JSON. Use ONLY the profile below as ground truth — never invent capabilities.\n\n${ZC_PROFILE}`,
@@ -251,6 +254,8 @@ Deno.serve(async (req) => {
         state,
         industry: q,
         source: "ai_scout",
+        origin: "ai",
+        lead_type: leadType,
         status: "drafted",
         stage: "new",
         notes: [summary, painHypothesis].filter(Boolean).join(" • "),
