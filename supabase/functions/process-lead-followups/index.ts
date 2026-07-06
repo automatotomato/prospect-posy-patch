@@ -95,6 +95,27 @@ Deno.serve(async (req) => {
 
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
+  // Read daily cap from lead_costs (fallback to 50)
+  let dailyCap = 50;
+  const { data: costsRow } = await supabase.from("lead_costs").select("daily_send_cap").eq("id", "default").maybeSingle();
+  if (costsRow?.daily_send_cap) dailyCap = Number(costsRow.daily_send_cap) || 50;
+
+  // How many autos have already gone out in the last 24h?
+  const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+  const { count: sentLast24h } = await supabase
+    .from("sales_activities")
+    .select("id", { count: "exact", head: true })
+    .eq("type", "email_sent")
+    .gte("created_at", since);
+  const alreadySent = sentLast24h ?? 0;
+  const remaining = Math.max(0, dailyCap - alreadySent);
+
+  if (remaining <= 0) {
+    return new Response(JSON.stringify({ ok: true, skipped: "daily_cap", sent_last_24h: alreadySent, daily_cap: dailyCap }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+
+  const batchLimit = Math.min(BATCH_SIZE, remaining);
   const nowIso = new Date().toISOString();
   const { data: dueLeads, error } = await supabase
     .from("sales_leads")
@@ -104,7 +125,7 @@ Deno.serve(async (req) => {
     .lte("follow_up_at", nowIso)
     .lt("contact_count", MAX_TOUCHES)
     .order("follow_up_at", { ascending: true })
-    .limit(BATCH_SIZE);
+    .limit(batchLimit);
 
   if (error) {
     console.error("query failed", error);
