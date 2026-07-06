@@ -114,9 +114,24 @@ export function useSalesLeads(userId: string | undefined) {
       if (rows.length < pageSize) break;
       offset += pageSize;
     }
-    const a = await supabase.from("sales_activities").select("*").order("created_at", { ascending: false }).limit(200);
+    // Paginate activities so counts on Activity page reflect reality (not a 200-row cap)
+    let aOffset = 0;
+    let allActs: Activity[] = [];
+    let actErr: any = null;
+    while (true) {
+      const { data, error } = await supabase
+        .from("sales_activities")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .range(aOffset, aOffset + pageSize - 1);
+      if (error) { actErr = error; break; }
+      const rows = (data as Activity[]) || [];
+      allActs = allActs.concat(rows);
+      if (rows.length < pageSize) break;
+      aOffset += pageSize;
+    }
     if (leadsError) toast.error(leadsError.message); else setLeads(all);
-    if (a.error) toast.error(a.error.message); else setActivities((a.data as Activity[]) || []);
+    if (actErr) toast.error(actErr.message); else setActivities(allActs);
     setLoading(false);
   }, []);
 
