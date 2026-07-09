@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, MapPin, RefreshCw, Sparkles, Camera, Pencil } from "lucide-react";
+import { Check, MapPin, RefreshCw, Sparkles, Camera, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { useSales, KpiTile, effectiveOrigin, effectiveLeadType } from "./_shared";
+import { useSales, KpiTile, effectiveOrigin } from "./_shared";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import TeamDashboard from "./TeamDashboard";
@@ -16,7 +16,7 @@ type LeadCosts = {
 };
 
 export default function Dashboard() {
-  const { stats, dueFollowUps, discover, discovering, lastScout, setScanOpen, isAdmin, leads } = useSales();
+  const { stats, dueFollowUps, discover, discovering, lastScout, setScanOpen, isAdmin, leads, activities } = useSales();
   const [winsMonth, setWinsMonth] = useState<{ count: number; sum: number }>({ count: 0, sum: 0 });
   const [costs, setCosts] = useState<LeadCosts>({ ai_cost_per_lead: 0, mine_cost_per_lead: 0, daily_send_cap: 50 });
   const [costsOpen, setCostsOpen] = useState(false);
@@ -40,26 +40,39 @@ export default function Dashboard() {
       .then(({ count }) => setSentToday(count || 0));
   }, [isAdmin]);
 
-  // Origin x Type breakdown (all leads)
-  const matrix = useMemo(() => {
-    const m: Record<"mine" | "ai", Record<"direct" | "general", number>> = {
-      mine: { direct: 0, general: 0 },
-      ai: { direct: 0, general: 0 },
-    };
-    for (const l of leads) {
-      m[effectiveOrigin(l)][effectiveLeadType(l)] += 1;
+  // Email send metrics: buckets × categories (from sales_activities)
+  const emailMetrics = useMemo(() => {
+    const leadById = new Map(leads.map((l) => [l.id, l]));
+    const now = Date.now();
+    const startOfDay = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x.getTime(); };
+    const todayStart = startOfDay(new Date());
+    const yestStart = todayStart - 24 * 3600 * 1000;
+    const weekStart = now - 7 * 24 * 3600 * 1000;
+
+    const empty = () => ({ today: 0, yesterday: 0, week: 0, all: 0 });
+    const buckets = { newLeads: empty(), uploaded: empty(), followUps: empty() };
+
+    for (const a of activities) {
+      if (a.type !== "email_sent") continue;
+      const ts = new Date(a.created_at).getTime();
+      const touch = (a.metadata as any)?.touch ?? 1;
+      const lead = a.lead_id ? leadById.get(a.lead_id) : null;
+      const origin = lead ? effectiveOrigin(lead) : "ai";
+
+      let key: "newLeads" | "uploaded" | "followUps";
+      if (touch > 1) key = "followUps";
+      else if (origin === "mine") key = "uploaded";
+      else key = "newLeads";
+
+      const b = buckets[key];
+      b.all += 1;
+      if (ts >= weekStart) b.week += 1;
+      if (ts >= todayStart) b.today += 1;
+      else if (ts >= yestStart) b.yesterday += 1;
     }
-    return m;
-  }, [leads]);
+    return buckets;
+  }, [activities, leads]);
 
-  const wonCounts = useMemo(() => {
-    const m = { mine: 0, ai: 0 };
-    for (const l of leads) if (l.stage === "won") m[effectiveOrigin(l)] += 1;
-    return m;
-  }, [leads]);
-
-  const cpaAi = wonCounts.ai > 0 ? (costs.ai_cost_per_lead * matrix.ai.direct + costs.ai_cost_per_lead * matrix.ai.general) / wonCounts.ai : 0;
-  const cpaMine = wonCounts.mine > 0 ? (costs.mine_cost_per_lead * matrix.mine.direct + costs.mine_cost_per_lead * matrix.mine.general) / wonCounts.mine : 0;
 
   if (!isAdmin) return <TeamDashboard />;
 
@@ -74,47 +87,34 @@ export default function Dashboard() {
         <KpiTile label="Wins this month" value={winsMonth.count} delta={winsMonth.sum ? `$${winsMonth.sum.toLocaleString()}` : "Log a deal"} deltaTone="emerald" highlight progress={Math.min(100, winsMonth.count * 20)} />
       </section>
 
-      {/* Origin × Type breakdown */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-card border border-border rounded-2xl p-5">
-          <div className="flex justify-between items-baseline mb-4">
-            <div>
-              <h3 className="font-display font-semibold text-sm">Lead mix — Origin × Type</h3>
-              <p className="text-xs text-muted-foreground">Uploaded contacts vs AI-scouted, split by direct vs generic mailbox.</p>
-            </div>
+      {/* Email send metrics */}
+      <section className="bg-card border border-border rounded-2xl p-5">
+        <div className="flex justify-between items-baseline mb-4">
+          <div>
+            <h3 className="font-display font-semibold text-sm flex items-center gap-2"><Mail className="w-4 h-4 text-primary" />Emails sent</h3>
+            <p className="text-xs text-muted-foreground">Outbound volume by category and time window.</p>
           </div>
-          <div className="grid grid-cols-3 gap-2 text-center text-xs">
-            <div />
-            <div className="font-semibold text-emerald-300 uppercase text-[10px] tracking-wider">Mine</div>
-            <div className="font-semibold text-violet-300 uppercase text-[10px] tracking-wider">AI</div>
-
-            <div className="font-semibold text-sky-300 uppercase text-[10px] tracking-wider text-right pr-2 self-center">Direct</div>
-            <MatrixCell n={matrix.mine.direct} tone="strong" />
-            <MatrixCell n={matrix.ai.direct} tone="strong" />
-
-            <div className="font-semibold text-amber-300 uppercase text-[10px] tracking-wider text-right pr-2 self-center">General</div>
-            <MatrixCell n={matrix.mine.general} tone="soft" />
-            <MatrixCell n={matrix.ai.general} tone="soft" />
-          </div>
-          <p className="mt-4 text-[10px] text-muted-foreground italic">
-            "Direct" = personal decision-maker email. "General" = info@ / sales@ / hello@ style catch-alls. AI scout now biases toward Direct where discoverable.
-          </p>
         </div>
-
-        <div className="bg-card border border-border rounded-2xl p-5">
-          <div className="flex justify-between items-baseline mb-4">
-            <div>
-              <h3 className="font-display font-semibold text-sm">Cost per acquisition</h3>
-              <p className="text-xs text-muted-foreground">Set your average lead cost by origin to compute CPA per closed win.</p>
-            </div>
-            <Button size="sm" variant="ghost" onClick={() => setCostsOpen(true)} className="gap-1"><Pencil className="w-3.5 h-3.5" />Edit costs</Button>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <CpaCard label="AI leads" wins={wonCounts.ai} totalCost={costs.ai_cost_per_lead * (matrix.ai.direct + matrix.ai.general)} cpa={cpaAi} accent="violet" />
-            <CpaCard label="Uploaded (Mine)" wins={wonCounts.mine} totalCost={costs.mine_cost_per_lead * (matrix.mine.direct + matrix.mine.general)} cpa={cpaMine} accent="emerald" />
-          </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                <th className="text-left font-semibold pb-2"></th>
+                <th className="text-center font-semibold pb-2">Today</th>
+                <th className="text-center font-semibold pb-2">Yesterday</th>
+                <th className="text-center font-semibold pb-2">Last 7 days</th>
+                <th className="text-center font-semibold pb-2">All time</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              <MetricRow label="New leads" hint="First touch · AI scouted" tone="violet" row={emailMetrics.newLeads} />
+              <MetricRow label="Uploaded" hint="First touch · Mine origin" tone="emerald" row={emailMetrics.uploaded} />
+              <MetricRow label="Follow-ups" hint="Touch #2 and beyond" tone="sky" row={emailMetrics.followUps} />
+            </tbody>
+          </table>
         </div>
       </section>
+
 
       <section className="text-xs text-muted-foreground bg-card border border-border rounded-xl px-4 py-2.5 flex flex-wrap items-center gap-x-4 gap-y-1">
         <span><span className="font-semibold text-foreground">{stats.inSequence}</span> in sequence</span>
@@ -181,33 +181,32 @@ export default function Dashboard() {
   );
 }
 
-function MatrixCell({ n, tone }: { n: number; tone: "strong" | "soft" }) {
+function MetricRow({ label, hint, tone, row }: {
+  label: string; hint: string; tone: "violet" | "emerald" | "sky";
+  row: { today: number; yesterday: number; week: number; all: number };
+}) {
+  const dot =
+    tone === "violet" ? "bg-violet-400" :
+    tone === "emerald" ? "bg-emerald-400" : "bg-sky-400";
   return (
-    <div className={`rounded-xl px-3 py-4 flex flex-col items-center justify-center gap-0.5 border ${
-      tone === "strong" ? "bg-primary/10 border-primary/30" : "bg-muted/30 border-border"
-    }`}>
-      <span className="font-display text-2xl font-bold tabular-nums">{n}</span>
-      <span className="text-[10px] text-muted-foreground">leads</span>
-    </div>
+    <tr>
+      <td className="py-3 pr-3">
+        <div className="flex items-center gap-2">
+          <span className={`w-2 h-2 rounded-full ${dot}`} />
+          <div>
+            <div className="font-semibold text-foreground">{label}</div>
+            <div className="text-[10px] text-muted-foreground">{hint}</div>
+          </div>
+        </div>
+      </td>
+      <td className="text-center font-display text-lg font-bold tabular-nums">{row.today}</td>
+      <td className="text-center font-display text-lg font-bold tabular-nums text-muted-foreground">{row.yesterday}</td>
+      <td className="text-center font-display text-lg font-bold tabular-nums">{row.week}</td>
+      <td className="text-center font-display text-lg font-bold tabular-nums">{row.all}</td>
+    </tr>
   );
 }
 
-function CpaCard({ label, wins, totalCost, cpa, accent }: { label: string; wins: number; totalCost: number; cpa: number; accent: "violet" | "emerald" }) {
-  const accentClass = accent === "violet"
-    ? "text-violet-300 bg-violet-500/10 border-violet-500/30"
-    : "text-emerald-300 bg-emerald-500/10 border-emerald-500/30";
-  return (
-    <div className={`rounded-xl p-4 border ${accentClass}`}>
-      <div className="text-[10px] uppercase tracking-wider font-semibold opacity-80">{label}</div>
-      <div className="mt-2 font-display text-2xl font-bold tabular-nums">
-        {cpa > 0 ? `$${cpa.toFixed(2)}` : "—"}
-      </div>
-      <div className="mt-1 text-[10px] opacity-70">
-        {wins} wins · ${totalCost.toFixed(0)} invested
-      </div>
-    </div>
-  );
-}
 
 function CostsDialog({ open, onOpenChange, costs, onSaved }: {
   open: boolean; onOpenChange: (v: boolean) => void; costs: LeadCosts;
