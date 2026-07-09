@@ -87,47 +87,34 @@ export default function Dashboard() {
         <KpiTile label="Wins this month" value={winsMonth.count} delta={winsMonth.sum ? `$${winsMonth.sum.toLocaleString()}` : "Log a deal"} deltaTone="emerald" highlight progress={Math.min(100, winsMonth.count * 20)} />
       </section>
 
-      {/* Origin × Type breakdown */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-card border border-border rounded-2xl p-5">
-          <div className="flex justify-between items-baseline mb-4">
-            <div>
-              <h3 className="font-display font-semibold text-sm">Lead mix — Origin × Type</h3>
-              <p className="text-xs text-muted-foreground">Uploaded contacts vs AI-scouted, split by direct vs generic mailbox.</p>
-            </div>
+      {/* Email send metrics */}
+      <section className="bg-card border border-border rounded-2xl p-5">
+        <div className="flex justify-between items-baseline mb-4">
+          <div>
+            <h3 className="font-display font-semibold text-sm flex items-center gap-2"><Mail className="w-4 h-4 text-primary" />Emails sent</h3>
+            <p className="text-xs text-muted-foreground">Outbound volume by category and time window.</p>
           </div>
-          <div className="grid grid-cols-3 gap-2 text-center text-xs">
-            <div />
-            <div className="font-semibold text-emerald-300 uppercase text-[10px] tracking-wider">Mine</div>
-            <div className="font-semibold text-violet-300 uppercase text-[10px] tracking-wider">AI</div>
-
-            <div className="font-semibold text-sky-300 uppercase text-[10px] tracking-wider text-right pr-2 self-center">Direct</div>
-            <MatrixCell n={matrix.mine.direct} tone="strong" />
-            <MatrixCell n={matrix.ai.direct} tone="strong" />
-
-            <div className="font-semibold text-amber-300 uppercase text-[10px] tracking-wider text-right pr-2 self-center">General</div>
-            <MatrixCell n={matrix.mine.general} tone="soft" />
-            <MatrixCell n={matrix.ai.general} tone="soft" />
-          </div>
-          <p className="mt-4 text-[10px] text-muted-foreground italic">
-            "Direct" = personal decision-maker email. "General" = info@ / sales@ / hello@ style catch-alls. AI scout now biases toward Direct where discoverable.
-          </p>
         </div>
-
-        <div className="bg-card border border-border rounded-2xl p-5">
-          <div className="flex justify-between items-baseline mb-4">
-            <div>
-              <h3 className="font-display font-semibold text-sm">Cost per acquisition</h3>
-              <p className="text-xs text-muted-foreground">Set your average lead cost by origin to compute CPA per closed win.</p>
-            </div>
-            <Button size="sm" variant="ghost" onClick={() => setCostsOpen(true)} className="gap-1"><Pencil className="w-3.5 h-3.5" />Edit costs</Button>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <CpaCard label="AI leads" wins={wonCounts.ai} totalCost={costs.ai_cost_per_lead * (matrix.ai.direct + matrix.ai.general)} cpa={cpaAi} accent="violet" />
-            <CpaCard label="Uploaded (Mine)" wins={wonCounts.mine} totalCost={costs.mine_cost_per_lead * (matrix.mine.direct + matrix.mine.general)} cpa={cpaMine} accent="emerald" />
-          </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                <th className="text-left font-semibold pb-2"></th>
+                <th className="text-center font-semibold pb-2">Today</th>
+                <th className="text-center font-semibold pb-2">Yesterday</th>
+                <th className="text-center font-semibold pb-2">Last 7 days</th>
+                <th className="text-center font-semibold pb-2">All time</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              <MetricRow label="New leads" hint="First touch · AI scouted" tone="violet" row={emailMetrics.newLeads} />
+              <MetricRow label="Uploaded" hint="First touch · Mine origin" tone="emerald" row={emailMetrics.uploaded} />
+              <MetricRow label="Follow-ups" hint="Touch #2 and beyond" tone="sky" row={emailMetrics.followUps} />
+            </tbody>
+          </table>
         </div>
       </section>
+
 
       <section className="text-xs text-muted-foreground bg-card border border-border rounded-xl px-4 py-2.5 flex flex-wrap items-center gap-x-4 gap-y-1">
         <span><span className="font-semibold text-foreground">{stats.inSequence}</span> in sequence</span>
