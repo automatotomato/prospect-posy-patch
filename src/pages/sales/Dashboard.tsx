@@ -13,12 +13,14 @@ type LeadCosts = {
   ai_cost_per_lead: number;
   mine_cost_per_lead: number;
   daily_send_cap: number;
+  ai_new_daily_cap: number;
+  followup_daily_cap: number;
 };
 
 export default function Dashboard() {
   const { stats, dueFollowUps, discover, discovering, lastScout, setScanOpen, isAdmin, leads, activities } = useSales();
   const [winsMonth, setWinsMonth] = useState<{ count: number; sum: number }>({ count: 0, sum: 0 });
-  const [costs, setCosts] = useState<LeadCosts>({ ai_cost_per_lead: 0, mine_cost_per_lead: 0, daily_send_cap: 50 });
+  const [costs, setCosts] = useState<LeadCosts>({ ai_cost_per_lead: 0, mine_cost_per_lead: 0, daily_send_cap: 200, ai_new_daily_cap: 50, followup_daily_cap: 150 });
   const [costsOpen, setCostsOpen] = useState(false);
   const [sentToday, setSentToday] = useState(0);
 

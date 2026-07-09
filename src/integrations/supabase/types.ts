@@ -578,21 +578,27 @@ export type Database = {
       lead_costs: {
         Row: {
           ai_cost_per_lead: number
+          ai_new_daily_cap: number
           daily_send_cap: number
+          followup_daily_cap: number
           id: string
           mine_cost_per_lead: number
           updated_at: string
         }
         Insert: {
           ai_cost_per_lead?: number
+          ai_new_daily_cap?: number
           daily_send_cap?: number
+          followup_daily_cap?: number
           id?: string
           mine_cost_per_lead?: number
           updated_at?: string
         }
         Update: {
           ai_cost_per_lead?: number
+          ai_new_daily_cap?: number
           daily_send_cap?: number
+          followup_daily_cap?: number
           id?: string
           mine_cost_per_lead?: number
           updated_at?: string

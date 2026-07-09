@@ -95,23 +95,31 @@ Deno.serve(async (req) => {
 
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
-  // Read daily cap from lead_costs (fallback to 50)
-  let dailyCap = 50;
-  const { data: costsRow } = await supabase.from("lead_costs").select("daily_send_cap").eq("id", "default").maybeSingle();
-  if (costsRow?.daily_send_cap) dailyCap = Number(costsRow.daily_send_cap) || 50;
+  // Read caps from lead_costs. This function only sends follow-ups (touch>=2),
+  // so it is bound by followup_daily_cap (default 150).
+  let dailyCap = 200;
+  let followupCap = 150;
+  const { data: costsRow } = await supabase
+    .from("lead_costs")
+    .select("daily_send_cap, followup_daily_cap")
+    .eq("id", "default")
+    .maybeSingle();
+  if (costsRow?.daily_send_cap) dailyCap = Number(costsRow.daily_send_cap) || 200;
+  if (costsRow?.followup_daily_cap) followupCap = Number(costsRow.followup_daily_cap) || 150;
 
-  // How many autos have already gone out in the last 24h?
+  // Count follow-up auto-sends in the last 24h (touch > 1).
   const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
-  const { count: sentLast24h } = await supabase
+  const { data: recent } = await supabase
     .from("sales_activities")
-    .select("id", { count: "exact", head: true })
+    .select("metadata")
     .eq("type", "email_sent")
     .gte("created_at", since);
-  const alreadySent = sentLast24h ?? 0;
-  const remaining = Math.max(0, dailyCap - alreadySent);
+  const followupsSent = (recent || []).filter((r: any) => Number(r?.metadata?.touch ?? 1) > 1).length;
+  const alreadySent = recent?.length ?? 0;
+  const remaining = Math.max(0, followupCap - followupsSent);
 
   if (remaining <= 0) {
-    return new Response(JSON.stringify({ ok: true, skipped: "daily_cap", sent_last_24h: alreadySent, daily_cap: dailyCap }),
+    return new Response(JSON.stringify({ ok: true, skipped: "followup_cap", followups_sent_24h: followupsSent, followup_cap: followupCap, daily_cap: dailyCap }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
