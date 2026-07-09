@@ -16,7 +16,7 @@ type LeadCosts = {
 };
 
 export default function Dashboard() {
-  const { stats, dueFollowUps, discover, discovering, lastScout, setScanOpen, isAdmin, leads } = useSales();
+  const { stats, dueFollowUps, discover, discovering, lastScout, setScanOpen, isAdmin, leads, activities } = useSales();
   const [winsMonth, setWinsMonth] = useState<{ count: number; sum: number }>({ count: 0, sum: 0 });
   const [costs, setCosts] = useState<LeadCosts>({ ai_cost_per_lead: 0, mine_cost_per_lead: 0, daily_send_cap: 50 });
   const [costsOpen, setCostsOpen] = useState(false);
