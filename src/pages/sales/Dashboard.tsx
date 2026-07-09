@@ -13,6 +13,8 @@ type LeadCosts = {
   ai_cost_per_lead: number;
   mine_cost_per_lead: number;
   daily_send_cap: number;
+  ai_new_daily_cap: number;
+  followup_daily_cap: number;
 };
 
 export default function Dashboard() {
