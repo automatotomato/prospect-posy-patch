@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, MapPin, RefreshCw, Sparkles, Camera, Pencil, Mail } from "lucide-react";
+import { Check, MapPin, RefreshCw, Sparkles, Camera, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
