@@ -128,59 +128,39 @@ Deno.serve(async (req) => {
 
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
-  // Read caps from lead_costs. This function only sends follow-ups (touch>=2),
-  // so it is bound by followup_daily_cap (default 150).
-  let dailyCap = 200;
+  // Read caps from lead_costs. Floor is enforced at DAILY_FLOOR (200).
+  let dailyFloor = DAILY_FLOOR;
   let followupCap = 150;
   const { data: costsRow } = await supabase
     .from("lead_costs")
     .select("daily_send_cap, followup_daily_cap")
     .eq("id", "default")
     .maybeSingle();
-  if (costsRow?.daily_send_cap) dailyCap = Number(costsRow.daily_send_cap) || 200;
+  if (costsRow?.daily_send_cap) dailyFloor = Math.max(DAILY_FLOOR, Number(costsRow.daily_send_cap) || DAILY_FLOOR);
   if (costsRow?.followup_daily_cap) followupCap = Number(costsRow.followup_daily_cap) || 150;
 
-  // Count follow-up auto-sends in the last 24h (touch > 1).
+  // Count auto-sends in the last 24h, split by first-touch vs follow-up.
   const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
   const { data: recent } = await supabase
     .from("sales_activities")
     .select("metadata")
     .eq("type", "email_sent")
     .gte("created_at", since);
-  const followupsSent = (recent || []).filter((r: any) => Number(r?.metadata?.touch ?? 1) > 1).length;
-  const alreadySent = recent?.length ?? 0;
-  const remaining = Math.max(0, followupCap - followupsSent);
+  const recentRows = recent || [];
+  const followupsSent24h = recentRows.filter((r: any) => Number(r?.metadata?.touch ?? 1) > 1).length;
+  const firstTouchSent24h = recentRows.length - followupsSent24h;
+  const alreadySent = recentRows.length;
 
-  if (remaining <= 0) {
-    return new Response(JSON.stringify({ ok: true, skipped: "followup_cap", followups_sent_24h: followupsSent, followup_cap: followupCap, daily_cap: dailyCap }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  }
+  // Per-run budget: enough to push us to the daily floor.
+  const roomToFloor = Math.max(0, dailyFloor - alreadySent);
+  const perRunBudget = Math.min(BATCH_SIZE, roomToFloor || BATCH_SIZE);
 
-  const batchLimit = Math.min(BATCH_SIZE, remaining);
   const nowIso = new Date().toISOString();
-  const { data: dueLeads, error } = await supabase
-    .from("sales_leads")
-    .select("id,business_name,industry,city,state,website,notes,email,contact_count,last_contacted_at,follow_up_at,stage,owner_id")
-    .eq("stage", "contacted")
-    .not("email", "is", null)
-    .lte("follow_up_at", nowIso)
-    .lt("contact_count", MAX_TOUCHES)
-    .order("follow_up_at", { ascending: true })
-    .limit(batchLimit);
-
-  if (error) {
-    console.error("query failed", error);
-    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  }
-
   const results: any[] = [];
-  for (const lead of (dueLeads as Lead[]) || []) {
-    const nextTouch = (lead.contact_count || 1) + 1;
-    if (nextTouch > MAX_TOUCHES) { results.push({ id: lead.id, ok: false, reason: "cap_reached" }); continue; }
+  let sentThisRun = 0;
 
-    const draft = await draftFollowup(lead, nextTouch, OPENAI_KEY);
-    if (!draft) { results.push({ id: lead.id, ok: false, reason: "draft_failed" }); continue; }
-
+  // Shared send helper — one Resend call + activity/log rows.
+  async function sendOne(lead: Lead, draft: { subject: string; body: string }, touch: number): Promise<{ ok: boolean; reason?: string; resendId?: string }> {
     const unsubscribeUrl = `${SUPABASE_URL}/functions/v1/unsubscribe?email=${encodeURIComponent(lead.email)}`;
     const html = `<!DOCTYPE html><html><body style="font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px;">
 ${draft.body.split("\n").map((ln) => ln.trim() ? `<p style="margin:0 0 16px 0;">${ln}</p>` : "").join("")}
@@ -191,69 +171,122 @@ ${draft.body.split("\n").map((ln) => ln.trim() ? `<p style="margin:0 0 16px 0;">
 <p style="margin-top:40px;padding-top:20px;border-top:1px solid #eee;font-size:11px;color:#999;text-align:center;">
 <a href="${unsubscribeUrl}" style="color:#999;">Unsubscribe</a> from future emails</p>
 </body></html>`;
-
     const r = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${RESEND_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from: BRAND.fromHeader,
-        to: [lead.email],
-        subject: draft.subject,
-        html,
-        reply_to: BRAND.replyTo,
-      }),
+      body: JSON.stringify({ from: BRAND.fromHeader, to: [lead.email], subject: draft.subject, html, reply_to: BRAND.replyTo }),
     });
     const respBody = await r.json().catch(() => ({}));
     if (!r.ok) {
-      results.push({ id: lead.id, ok: false, reason: respBody?.message || `HTTP ${r.status}` });
-      // If a hard "unsubscribed / bounced" style error, park lead
       if (r.status === 422 || r.status === 403) {
         await supabase.from("sales_leads").update({ stage: "unsubscribed", last_activity_at: nowIso }).eq("id", lead.id);
       }
-      await new Promise((res) => setTimeout(res, SEND_SPACING_MS));
-      continue;
+      return { ok: false, reason: respBody?.message || `HTTP ${r.status}` };
     }
-
-    const now = new Date();
-    const gap = CADENCE_DAYS[nextTouch + 1] ?? 0;
-    const next = gap > 0 ? new Date(now.getTime() + gap * 86_400_000).toISOString() : null;
-
-    await supabase.from("sales_leads").update({
-      contact_count: nextTouch,
-      last_contacted_at: now.toISOString(),
-      last_activity_at: now.toISOString(),
-      follow_up_at: next,
-      stage: "contacted",
-    }).eq("id", lead.id);
-
     await supabase.from("sales_activities").insert({
       lead_id: lead.id,
       owner_id: lead.owner_id,
       type: "email_sent",
-      note: `Follow-up #${nextTouch - 1}: ${draft.subject}`,
-      metadata: { resend_id: respBody?.id, auto: true, touch: nextTouch },
+      note: touch === 1 ? `First touch: ${draft.subject}` : `Follow-up #${touch - 1}: ${draft.subject}`,
+      metadata: { resend_id: respBody?.id, auto: true, touch },
     });
-
     await supabase.from("sent_emails").insert({
       resend_id: respBody?.id,
       to_email: lead.email,
       subject: draft.subject,
       body: draft.body,
-      email_type: "sales_followup",
+      email_type: touch === 1 ? "sales_first_touch" : "sales_followup",
       status: "sent",
     });
+    return { ok: true, resendId: respBody?.id };
+  }
 
-    results.push({ id: lead.id, ok: true, touch: nextTouch, next_follow_up: next });
-    await new Promise((res) => setTimeout(res, SEND_SPACING_MS));
+  // ---- PHASE 1: due follow-ups (bounded by followupCap) ----
+  const followupRoom = Math.max(0, Math.min(followupCap - followupsSent24h, perRunBudget));
+  if (followupRoom > 0) {
+    const { data: dueLeads, error } = await supabase
+      .from("sales_leads")
+      .select("id,business_name,industry,city,state,website,notes,email,contact_count,last_contacted_at,follow_up_at,stage,owner_id")
+      .eq("stage", "contacted")
+      .not("email", "is", null)
+      .lte("follow_up_at", nowIso)
+      .lt("contact_count", MAX_TOUCHES)
+      .order("follow_up_at", { ascending: true })
+      .limit(followupRoom);
+    if (error) console.error("followup query failed", error);
+
+    for (const lead of (dueLeads as Lead[]) || []) {
+      if (sentThisRun >= perRunBudget) break;
+      const nextTouch = (lead.contact_count || 1) + 1;
+      if (nextTouch > MAX_TOUCHES) continue;
+      const draft = await draftFollowup(lead, nextTouch, OPENAI_KEY);
+      if (!draft) { results.push({ id: lead.id, ok: false, reason: "draft_failed" }); continue; }
+      const s = await sendOne(lead, draft, nextTouch);
+      if (!s.ok) { results.push({ id: lead.id, ok: false, reason: s.reason }); await new Promise((r) => setTimeout(r, SEND_SPACING_MS)); continue; }
+
+      const now = new Date();
+      const gap = CADENCE_DAYS[nextTouch + 1] ?? 0;
+      const next = gap > 0 ? new Date(now.getTime() + gap * 86_400_000).toISOString() : null;
+      await supabase.from("sales_leads").update({
+        contact_count: nextTouch,
+        last_contacted_at: now.toISOString(),
+        last_activity_at: now.toISOString(),
+        follow_up_at: next,
+        stage: "contacted",
+      }).eq("id", lead.id);
+
+      results.push({ id: lead.id, ok: true, touch: nextTouch, next_follow_up: next });
+      sentThisRun += 1;
+      await new Promise((r) => setTimeout(r, SEND_SPACING_MS));
+    }
+  }
+
+  // ---- PHASE 2: top up with first-touch sends until we hit the daily floor ----
+  const topUpRoom = Math.max(0, Math.min(perRunBudget - sentThisRun, dailyFloor - alreadySent - sentThisRun));
+  if (topUpRoom > 0) {
+    const { data: freshLeads, error: freshErr } = await supabase
+      .from("sales_leads")
+      .select("id,business_name,industry,city,state,website,notes,email,contact_count,last_contacted_at,follow_up_at,stage,owner_id")
+      .not("email", "is", null)
+      .or("contact_count.is.null,contact_count.eq.0")
+      .not("stage", "in", "(unsubscribed,won,lost)")
+      .order("created_at", { ascending: true })
+      .limit(topUpRoom);
+    if (freshErr) console.error("first-touch query failed", freshErr);
+
+    for (const lead of (freshLeads as Lead[]) || []) {
+      if (sentThisRun >= perRunBudget) break;
+      const draft = await draftFirstTouch(lead, OPENAI_KEY);
+      if (!draft) { results.push({ id: lead.id, ok: false, reason: "first_touch_draft_failed" }); continue; }
+      const s = await sendOne(lead, draft, 1);
+      if (!s.ok) { results.push({ id: lead.id, ok: false, reason: s.reason }); await new Promise((r) => setTimeout(r, SEND_SPACING_MS)); continue; }
+
+      const now = new Date();
+      const nextGap = CADENCE_DAYS[2] ?? 4;
+      const next = new Date(now.getTime() + nextGap * 86_400_000).toISOString();
+      await supabase.from("sales_leads").update({
+        contact_count: 1,
+        last_contacted_at: now.toISOString(),
+        last_activity_at: now.toISOString(),
+        follow_up_at: next,
+        stage: "contacted",
+      }).eq("id", lead.id);
+
+      results.push({ id: lead.id, ok: true, first_touch: true, next_follow_up: next });
+      sentThisRun += 1;
+      await new Promise((r) => setTimeout(r, SEND_SPACING_MS));
+    }
   }
 
   return new Response(
     JSON.stringify({
       ok: true, ran_at: nowIso,
-      considered: dueLeads?.length ?? 0,
-      sent: results.filter((r) => r.ok).length,
-      sent_last_24h: alreadySent + results.filter((r) => r.ok).length,
-      daily_cap: dailyCap,
+      sent_this_run: sentThisRun,
+      sent_last_24h: alreadySent + sentThisRun,
+      first_touch_24h: firstTouchSent24h,
+      followups_24h: followupsSent24h,
+      daily_floor: dailyFloor,
+      followup_cap: followupCap,
       results,
     }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } },
