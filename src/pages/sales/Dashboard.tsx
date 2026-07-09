@@ -181,33 +181,32 @@ export default function Dashboard() {
   );
 }
 
-function MatrixCell({ n, tone }: { n: number; tone: "strong" | "soft" }) {
+function MetricRow({ label, hint, tone, row }: {
+  label: string; hint: string; tone: "violet" | "emerald" | "sky";
+  row: { today: number; yesterday: number; week: number; all: number };
+}) {
+  const dot =
+    tone === "violet" ? "bg-violet-400" :
+    tone === "emerald" ? "bg-emerald-400" : "bg-sky-400";
   return (
-    <div className={`rounded-xl px-3 py-4 flex flex-col items-center justify-center gap-0.5 border ${
-      tone === "strong" ? "bg-primary/10 border-primary/30" : "bg-muted/30 border-border"
-    }`}>
-      <span className="font-display text-2xl font-bold tabular-nums">{n}</span>
-      <span className="text-[10px] text-muted-foreground">leads</span>
-    </div>
+    <tr>
+      <td className="py-3 pr-3">
+        <div className="flex items-center gap-2">
+          <span className={`w-2 h-2 rounded-full ${dot}`} />
+          <div>
+            <div className="font-semibold text-foreground">{label}</div>
+            <div className="text-[10px] text-muted-foreground">{hint}</div>
+          </div>
+        </div>
+      </td>
+      <td className="text-center font-display text-lg font-bold tabular-nums">{row.today}</td>
+      <td className="text-center font-display text-lg font-bold tabular-nums text-muted-foreground">{row.yesterday}</td>
+      <td className="text-center font-display text-lg font-bold tabular-nums">{row.week}</td>
+      <td className="text-center font-display text-lg font-bold tabular-nums">{row.all}</td>
+    </tr>
   );
 }
 
-function CpaCard({ label, wins, totalCost, cpa, accent }: { label: string; wins: number; totalCost: number; cpa: number; accent: "violet" | "emerald" }) {
-  const accentClass = accent === "violet"
-    ? "text-violet-300 bg-violet-500/10 border-violet-500/30"
-    : "text-emerald-300 bg-emerald-500/10 border-emerald-500/30";
-  return (
-    <div className={`rounded-xl p-4 border ${accentClass}`}>
-      <div className="text-[10px] uppercase tracking-wider font-semibold opacity-80">{label}</div>
-      <div className="mt-2 font-display text-2xl font-bold tabular-nums">
-        {cpa > 0 ? `$${cpa.toFixed(2)}` : "—"}
-      </div>
-      <div className="mt-1 text-[10px] opacity-70">
-        {wins} wins · ${totalCost.toFixed(0)} invested
-      </div>
-    </div>
-  );
-}
 
 function CostsDialog({ open, onOpenChange, costs, onSaved }: {
   open: boolean; onOpenChange: (v: boolean) => void; costs: LeadCosts;
