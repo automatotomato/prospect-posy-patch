@@ -40,26 +40,39 @@ export default function Dashboard() {
       .then(({ count }) => setSentToday(count || 0));
   }, [isAdmin]);
 
-  // Origin x Type breakdown (all leads)
-  const matrix = useMemo(() => {
-    const m: Record<"mine" | "ai", Record<"direct" | "general", number>> = {
-      mine: { direct: 0, general: 0 },
-      ai: { direct: 0, general: 0 },
-    };
-    for (const l of leads) {
-      m[effectiveOrigin(l)][effectiveLeadType(l)] += 1;
+  // Email send metrics: buckets × categories (from sales_activities)
+  const emailMetrics = useMemo(() => {
+    const leadById = new Map(leads.map((l) => [l.id, l]));
+    const now = Date.now();
+    const startOfDay = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x.getTime(); };
+    const todayStart = startOfDay(new Date());
+    const yestStart = todayStart - 24 * 3600 * 1000;
+    const weekStart = now - 7 * 24 * 3600 * 1000;
+
+    const empty = () => ({ today: 0, yesterday: 0, week: 0, all: 0 });
+    const buckets = { newLeads: empty(), uploaded: empty(), followUps: empty() };
+
+    for (const a of activities) {
+      if (a.type !== "email_sent") continue;
+      const ts = new Date(a.created_at).getTime();
+      const touch = (a.metadata as any)?.touch ?? 1;
+      const lead = a.lead_id ? leadById.get(a.lead_id) : null;
+      const origin = lead ? effectiveOrigin(lead) : "ai";
+
+      let key: "newLeads" | "uploaded" | "followUps";
+      if (touch > 1) key = "followUps";
+      else if (origin === "mine") key = "uploaded";
+      else key = "newLeads";
+
+      const b = buckets[key];
+      b.all += 1;
+      if (ts >= weekStart) b.week += 1;
+      if (ts >= todayStart) b.today += 1;
+      else if (ts >= yestStart) b.yesterday += 1;
     }
-    return m;
-  }, [leads]);
+    return buckets;
+  }, [activities, leads]);
 
-  const wonCounts = useMemo(() => {
-    const m = { mine: 0, ai: 0 };
-    for (const l of leads) if (l.stage === "won") m[effectiveOrigin(l)] += 1;
-    return m;
-  }, [leads]);
-
-  const cpaAi = wonCounts.ai > 0 ? (costs.ai_cost_per_lead * matrix.ai.direct + costs.ai_cost_per_lead * matrix.ai.general) / wonCounts.ai : 0;
-  const cpaMine = wonCounts.mine > 0 ? (costs.mine_cost_per_lead * matrix.mine.direct + costs.mine_cost_per_lead * matrix.mine.general) / wonCounts.mine : 0;
 
   if (!isAdmin) return <TeamDashboard />;
 
