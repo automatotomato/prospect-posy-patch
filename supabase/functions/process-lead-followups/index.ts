@@ -75,6 +75,38 @@ Return JSON: {"subject":"...","body":"..."}`;
   } catch (_e) { return null; }
 }
 
+async function draftFirstTouch(lead: Lead, openaiKey: string): Promise<{ subject: string; body: string } | null> {
+  const system = `You are an SDR for Z & C Consultants writing a short, human first-touch email. Use ONLY the profile below.\n\n${ZC_PROFILE}`;
+  const user = `Write a first-touch cold email for:
+
+Business: ${lead.business_name}
+Industry: ${lead.industry || "unknown"}
+Location: ${lead.city || ""}${lead.state ? ", " + lead.state : ""}
+Website: ${lead.website || "n/a"}
+${lead.notes ? "Notes: " + lead.notes : ""}
+
+Keep under 90 words. Warm, specific to their industry, one clear ask (a 15-min call). No clichés.
+Return JSON: {"subject":"...","body":"..."}`;
+
+  const r = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${openaiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [{ role: "system", content: system }, { role: "user", content: user }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 500,
+    }),
+  });
+  if (!r.ok) { console.error("openai first-touch failed", r.status, await r.text()); return null; }
+  const j = await r.json();
+  try {
+    const parsed = JSON.parse(j.choices[0].message.content);
+    if (!parsed.subject || !parsed.body) return null;
+    return { subject: String(parsed.subject), body: String(parsed.body) };
+  } catch (_e) { return null; }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
