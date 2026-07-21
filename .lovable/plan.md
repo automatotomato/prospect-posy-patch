@@ -1,127 +1,66 @@
-# Leads classification, pipeline clarity, and safe daily volume
+## 1. Force password setup before accessing /sales
 
-## Why
+**How we'll track "hasn't set a password yet":** stamp new invited users with `user_metadata.must_set_password = true` at invite time, and clear it once they successfully call `updateUser({ password })`. Existing users (who already log in normally today) have no such flag and are unaffected.
 
-Right now every lead is in one bucket with a stage label. You can't tell at a glance which are your uploaded decision-maker contacts, which came from the AI scout, or which are useful "personal" emails vs generic mailboxes (info@, sales@, hr@…). That makes CPA math and team focus impossible. You also want to keep the automation running but hard-cap it at ~50 emails/day.
+### Changes
 
-## What you'll see in the app
+- **`supabase/functions/invite-team-member/index.ts`**
+  - When creating the auth user via `admin.auth.admin.createUser(...)`, add `user_metadata: { full_name: name, must_set_password: true }`.
+  - When the user already exists but the admin is re-inviting, call `admin.auth.admin.updateUserById(existing.id, { user_metadata: { ...existing.user_metadata, must_set_password: true } })` so a resent invite re-arms the guard.
+  - Redeploy the function.
 
-Every lead card and list row will show two chips:
+- **`src/pages/sales/SetPassword.tsx`**
+  - In `submit()`, after a successful `supabase.auth.updateUser({ password })`, also call `supabase.auth.updateUser({ data: { must_set_password: false } })` before navigating to `/sales`.
 
-- **Origin** — `Mine` (uploaded contacts) or `AI` (scout-generated)
-- **Type** — `Direct` (person@company.com) or `General` (info@, sales@, hello@, contact@, support@, admin@, office@, hr@, marketing@, billing@, careers@, team@, help@)
+- **`src/components/ProtectedRoute.tsx`** (guard already wraps `/sales/*`)
+  - After session load, if `user.user_metadata?.must_set_password === true` AND current path is not `/sales/set-password`, `Navigate` to `/sales/set-password` (replace).
+  - Allow `/sales/set-password` and `/sales/login` through unconditionally so the recovery flow still works.
 
-The Leads Queue, Leads All, Pipeline, and Dashboard get filter dropdowns for both. The dashboard tiles split into:
+- **`src/pages/sales/Login.tsx`**
+  - After a successful `signInWithPassword`, if `must_set_password` is still true (edge case: admin re-armed the flag), route to `/sales/set-password` instead of `/sales`.
+  - Add a small "First time here? Use the code from your invite email →" link to `/sales/set-password`.
 
-```text
-                Mine        AI
-Direct          123         42
-General          88         73
-```
+### Verification
+- Invite a fresh test email → confirm the recovery email lands, code works, password form shows, and after submit the user reaches `/sales` with `must_set_password` cleared (check via `supabase.auth.getUser()` in console).
+- Sign an existing admin (`alex@automateplanet.com`) in → confirm they go straight to `/sales` (no redirect loop).
+- Manually re-arm `must_set_password = true` on a test user via the invite resend → confirm next login bounces them to `/sales/set-password`.
 
-so you can see exactly which slice is converting and divide spend accordingly.
+## 2. Restrict team members to only their assigned leads
 
-## Pipeline stages — one clean ladder
+**Current state (verified):** RLS on `sales_leads` already reads `owner_id = auth.uid() OR assigned_to = auth.uid() OR is_admin(auth.uid())`. That's correct in principle, but two gaps let team members see more than intended:
 
-Every lead moves through exactly these stages (rename/consolidate anything else):
+1. `owner_id` on AI-scouted and uploaded leads is set to the admin who ran the scout/import, so non-admins never own leads — fine. But leads with `assigned_to IS NULL` are invisible to reps (correct) yet the sidebar/queue KPI counts, and some hooks, still count them because those numbers come from admin-context tiles wired into the same views reps see.
+2. A few write paths (bulk edit, drip send, follow-up assignment) fall back to `.eq('assigned_to', ...)` filters but don't hard-block reps from selecting leads outside their assignment when the list is unfiltered.
 
-```text
-new  →  queued  →  contacted  →  replied  →  meeting  →  won / lost / unsubscribed
-```
+### Changes
 
-- `new`: uploaded / scouted, not yet queued for outreach
-- `queued`: draft ready, waiting for send window
-- `contacted`: at least one email sent, in the auto follow-up sequence (touches 1–5)
-- `replied`: reply intent detected (positive / neutral / negative shown as a sub-badge)
-- `meeting`: booking link clicked or manually marked
-- `won` / `lost` / `unsubscribed`: terminal
+- **RLS tightening (`supabase--migration`)**
+  - Keep the existing SELECT / UPDATE / DELETE policies as-is (they already scope correctly to owner/assigned/admin).
+  - Add a stricter INSERT policy so a non-admin cannot create a lead assigned to someone else: `WITH CHECK (is_admin(auth.uid()) OR (owner_id = auth.uid() AND (assigned_to IS NULL OR assigned_to = auth.uid())))`.
+  - Add a trigger `prevent_sales_lead_assignee_change_by_reps` mirroring the existing `prevent_sales_lead_owner_change`: only admins may change `assigned_to`. Reps updating their own leads keep working because the trigger only fires when `assigned_to` actually changes.
 
-Stage counts on the dashboard and the Kanban header will reflect this exactly, and each count breaks down by Origin × Type in a tooltip.
+- **`src/hooks/useSalesLeads.ts`**
+  - No filter change needed for reps — RLS already scopes reads. But add an explicit `assigned_to = current user` fallback filter when `!isAdmin` so counts, `stats.by.*`, and pagination totals reflect only the rep's book (defense in depth + faster queries).
 
-## AI scout: bias toward Direct leads
+- **`src/pages/sales/SalesLayout.tsx`**
+  - Sidebar Queue / All / Follow-ups badges: when `!isAdmin`, compute from the rep-scoped leads only (already the case if the hook change above lands).
 
-The AI scout will:
+- **`src/components/sales/AssigneeSelect.tsx`**
+  - Disable the control entirely for non-admins (read-only chip showing the current assignee).
 
-1. Try to find a decision-maker email first (owner, GM, ops manager, etc.) via the existing discovery flow.
-2. Only fall back to a general mailbox if no personal email is discoverable.
-3. Tag `lead_type` on insert so the split is accurate from day one.
-4. Skip leads that would be duplicates of your uploaded `Mine` contacts (match by email lowercase).
+- **`src/pages/sales/_shared.tsx` (BulkBar)**
+  - Hide "Reassign" and "Bulk delete" bulk actions for non-admins. Keep "Send", "Mark contacted", "Add follow-up".
 
-## Daily send cap: 50/day
+- **`src/pages/sales/Dashboard.tsx`**
+  - Already branches to `TeamDashboard` for non-admins; confirm `TeamDashboard.tsx` KPIs use the scoped hook so numbers match "my leads only".
 
-The hourly follow-up worker will check how many auto-sends have gone out in the last 24h before drafting anything. Once 50 sends is reached, the run returns `skipped_daily_cap` and waits for the next window. This is a hard ceiling across both `Mine` and `AI` leads combined, adjustable from an admin setting later.
+### Verification
+- Log in as a `sales_rep` test user with 2 assigned leads → All Leads / Queue / Pipeline / Follow-ups all show exactly those 2 (and the sidebar badges match).
+- As the rep, try to reassign a lead to another user via the API directly → RLS/trigger rejects.
+- As admin, reassignment continues to work.
+- Confirm the rep cannot see or open leads that aren't theirs (URL-tampering a `/sales/leads/<id>` link they weren't assigned returns empty).
 
-## CPA tracking
+## Technical notes
 
-A tiny `lead_costs` config (single row for now) lets you enter:
-
-- Cost per AI lead (avg)
-- Cost per uploaded lead (avg, from your marketing spend)
-
-The dashboard multiplies these against `won` counts per Origin × Type to show a live CPA figure per slice. You can update the numbers as your spend changes.
-
----
-
-## Technical section
-
-### Database
-
-Migration on `public.sales_leads`:
-
-- Add `lead_type text check (lead_type in ('direct','general'))`
-- Add `origin text check (origin in ('mine','ai'))` (derived from existing `source` in a backfill; keep `source` for raw provenance)
-- Backfill:
-  - `origin = 'mine'` where `source = 'my_contacts'`, else `'ai'`
-  - `lead_type = 'general'` where email local-part matches the generic-mailbox list, else `'direct'`
-- Add `stage` check constraint enforcing the ladder above; migrate any legacy values (`drafted` → `queued`, unknown → `new`).
-- Add index on `(origin, lead_type, stage)` for dashboard queries.
-
-New table `public.lead_costs` (single-row keyed by `id = 'default'`):
-
-- `ai_cost_per_lead numeric`, `mine_cost_per_lead numeric`, `updated_at`
-- RLS: admins read/write, everyone else read.
-
-### Follow-up worker (`process-lead-followups`)
-
-- Before drafting: `select count(*) from sales_activities where type='email_sent' and metadata->>'auto'='true' and created_at > now() - interval '24 hours'`.
-- If count ≥ 50, return `{ ok:true, skipped:'daily_cap', sent_last_24h: count }`.
-- Otherwise cap the batch to `min(BATCH_SIZE, 50 - count)`.
-
-### AI scout (`sales-discover-leads` / `sales-scout-leads`)
-
-- Prompt updates: require decision-maker role, personal email preferred, list generic mailboxes as fallback-only.
-- On insert, compute `lead_type` from email prefix and set `origin='ai'`.
-- Dedupe against existing `email` (case-insensitive) before insert.
-
-### UI
-
-- `src/hooks/useSalesLeads.ts`: extend query + filter args with `origin`, `lead_type`.
-- Shared badge component `<LeadBadges lead />` rendering Origin + Type chips.
-- Pages: `LeadsQueue`, `LeadsAll`, `Pipeline`, `Followups`, `Dashboard` get:
-  - Two `<Select>` filters (Origin, Type)
-  - Badges on every card / row
-- `Dashboard`: 2×2 breakdown tile per stage; CPA tile pulling from `lead_costs`.
-- `SalesLayout` sidebar: stage counts scoped to current filters.
-
-### Reconciliation
-
-Extend `reconcile-lead-statuses` to also:
-
-- Normalize any legacy `stage` values to the ladder.
-- Recompute `lead_type` for rows where it is null (new uploads that predate the migration).
-
-### Docs / plan file
-
-Update `.lovable/plan.md` with the classification model and the 50/day cap so future work stays consistent.
-
----
-
-# Update: lead classification + daily send cap (shipped)
-
-- Every lead is tagged with `origin` (mine|ai) and `lead_type` (direct|general) at write time.
-- Uploaded contacts (ClientsPanel → "Send to pipeline") tag as `origin=mine`, and `lead_type` from the email prefix.
-- AI scout (`sales-scout-leads`) prefers personal decision-maker emails, falls back to generic mailboxes only if none discoverable, dedupes against every existing lead email, and inserts with `origin=ai` + `lead_type`.
-- Auto follow-up worker (`process-lead-followups`) reads `lead_costs.daily_send_cap` (default 50) and refuses to draft/send once 24h auto-sends hit the cap.
-- `lead_costs` table stores AI cost per lead, Mine cost per lead, daily_send_cap. Admins can edit from Dashboard → "Edit costs".
-- Dashboard: 2x2 Origin×Type matrix, per-origin CPA tile, and a "Sent last 24h / cap" tile.
-- Reconciler backfills `origin`/`lead_type` on any legacy row missing them.
+- No new tables. One migration (stricter INSERT policy + assignee-change trigger). One edge function redeploy (`invite-team-member`). Three frontend files edited, one auth flag added to metadata.
+- `must_set_password` lives in `auth.users.raw_user_meta_data`, which is user-editable — that's acceptable here because the worst case is a malicious user *removing* the flag on themselves to skip the setup screen, at which point they'd still need a valid password to log in (which is exactly what the flag is trying to force). It is not a security boundary, just a UX guard.
