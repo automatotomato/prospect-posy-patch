@@ -11,7 +11,7 @@ interface InvitePayload {
   role: "admin" | "sales_rep";
 }
 
-const APP_URL = "https://zcconsultants.automateplanet.com";
+const APP_URL = "https://zrmcconsultants.automateplanet.com";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });

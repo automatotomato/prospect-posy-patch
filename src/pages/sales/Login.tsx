@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { Briefcase } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-const APP_URL = "https://zcconsultants.automateplanet.com";
+const APP_URL = "https://zrmcconsultants.automateplanet.com";
 
 export default function SalesLogin() {
   const { user, signInWithPassword } = useAuth();

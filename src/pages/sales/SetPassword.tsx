@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { toast } from "sonner";
 import { KeyRound } from "lucide-react";
 
-const APP_URL = "https://zcconsultants.automateplanet.com";
+const APP_URL = "https://zrmcconsultants.automateplanet.com";
 
 export default function SetPassword() {
   const navigate = useNavigate();

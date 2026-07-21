@@ -23,12 +23,12 @@ interface RecoveryEmailProps {
 const getSetupUrl = (confirmationUrl: string, recipient?: string) => {
   try {
     const verifyUrl = new URL(confirmationUrl)
-    const redirectTo = verifyUrl.searchParams.get('redirect_to') || 'https://zcconsultants.automateplanet.com/sales/set-password'
+    const redirectTo = verifyUrl.searchParams.get('redirect_to') || 'https://zrmcconsultants.automateplanet.com/sales/set-password'
     const setupUrl = new URL(redirectTo)
     if (recipient) setupUrl.searchParams.set('email', recipient)
     return setupUrl.toString()
   } catch (_error) {
-    const setupUrl = new URL('https://zcconsultants.automateplanet.com/sales/set-password')
+    const setupUrl = new URL('https://zrmcconsultants.automateplanet.com/sales/set-password')
     if (recipient) setupUrl.searchParams.set('email', recipient)
     return setupUrl.toString()
   }
