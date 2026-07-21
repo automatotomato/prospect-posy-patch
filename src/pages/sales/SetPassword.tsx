@@ -109,8 +109,13 @@ export default function SetPassword() {
     if (password !== confirm) return toast.error("Passwords do not match");
     setLoading(true);
     const { error } = await supabase.auth.updateUser({ password });
+    if (error) {
+      setLoading(false);
+      return toast.error(error.message);
+    }
+    // Clear the "must set password" guard flag so ProtectedRoute lets them through.
+    await supabase.auth.updateUser({ data: { must_set_password: false } });
     setLoading(false);
-    if (error) return toast.error(error.message);
     toast.success("Password set — you're signed in");
     navigate("/sales", { replace: true });
   };
