@@ -97,17 +97,29 @@ export function useSalesLeads(userId: string | undefined) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    // Paginate sales_leads to bypass the 1000-row default limit
+    // Paginate sales_leads to bypass the 1000-row default limit.
+    // RLS already scopes reads (owner OR assigned OR admin). We also filter
+    // explicitly by assignee for non-admins as defense in depth so counts and
+    // pagination totals match "my leads only".
     const pageSize = 1000;
     let offset = 0;
     let all: Lead[] = [];
     let leadsError: any = null;
+    // Determine role for extra scoping
+    let scopeToAssigned = false;
+    if (userId) {
+      const { data: roleRow } = await supabase
+        .from("user_roles").select("role").eq("user_id", userId).eq("role", "admin").maybeSingle();
+      scopeToAssigned = !roleRow;
+    }
     while (true) {
-      const { data, error } = await supabase
+      let q = supabase
         .from("sales_leads")
         .select("*")
         .order("created_at", { ascending: false })
         .range(offset, offset + pageSize - 1);
+      if (scopeToAssigned && userId) q = q.eq("assigned_to", userId);
+      const { data, error } = await q;
       if (error) { leadsError = error; break; }
       const rows = (data as Lead[]) || [];
       all = all.concat(rows);

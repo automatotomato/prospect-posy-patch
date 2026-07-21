@@ -91,13 +91,19 @@ Deno.serve(async (req) => {
         email,
         password: tempPw,
         email_confirm: true,
-        user_metadata: { full_name: name },
+        user_metadata: { full_name: name, must_set_password: true },
       });
       if (createErr) {
         console.error("createUser error", createErr);
       }
     } else {
       userExists = true;
+      // Re-arm the "must set password" guard so a resent invite forces the setup screen.
+      const meta = (existing.user_metadata as Record<string, unknown>) || {};
+      const { error: updErr } = await admin.auth.admin.updateUserById(existing.id, {
+        user_metadata: { ...meta, must_set_password: true },
+      });
+      if (updErr) console.error("updateUserById error", updErr);
     }
 
     // Generate recovery link (works for both new and existing users)
