@@ -247,8 +247,8 @@ ${draft.body.split("\n").map((ln) => ln.trim() ? `<p style="margin:0 0 16px 0;">
     }
   }
 
-  // ---- PHASE 2: top up with first-touch sends until we hit the daily floor ----
-  const topUpRoom = Math.max(0, Math.min(perRunBudget - sentThisRun, dailyFloor - alreadySent - sentThisRun));
+  // ---- PHASE 2: top up with first-touch sends until we hit this hour's paced target ----
+  const topUpRoom = Math.max(0, perRunBudget - sentThisRun);
   if (topUpRoom > 0) {
     const { data: freshLeads, error: freshErr } = await supabase
       .from("sales_leads")
