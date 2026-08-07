@@ -292,6 +292,7 @@ ${draft.body.split("\n").map((ln) => ln.trim() ? `<p style="margin:0 0 16px 0;">
       first_touch_24h: firstTouchSent24h,
       followups_24h: followupsSent24h,
       daily_floor: dailyFloor,
+      paced_target_this_hour: pacedTarget,
       followup_cap: followupCap,
       results,
     }),
