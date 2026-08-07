@@ -128,16 +128,16 @@ Deno.serve(async (req) => {
 
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
-  // Read caps from lead_costs. Floor is enforced at DAILY_FLOOR (200).
+  // Read caps from lead_costs. Floor is enforced at DAILY_FLOOR (500).
   let dailyFloor = DAILY_FLOOR;
-  let followupCap = 150;
+  let followupCap = 350;
   const { data: costsRow } = await supabase
     .from("lead_costs")
     .select("daily_send_cap, followup_daily_cap")
     .eq("id", "default")
     .maybeSingle();
   if (costsRow?.daily_send_cap) dailyFloor = Math.max(DAILY_FLOOR, Number(costsRow.daily_send_cap) || DAILY_FLOOR);
-  if (costsRow?.followup_daily_cap) followupCap = Number(costsRow.followup_daily_cap) || 150;
+  if (costsRow?.followup_daily_cap) followupCap = Number(costsRow.followup_daily_cap) || 350;
 
   // Count auto-sends in the last 24h, split by first-touch vs follow-up.
   const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
@@ -151,9 +151,15 @@ Deno.serve(async (req) => {
   const firstTouchSent24h = recentRows.length - followupsSent24h;
   const alreadySent = recentRows.length;
 
-  // Per-run budget: enough to push us to the daily floor.
-  const roomToFloor = Math.max(0, dailyFloor - alreadySent);
-  const perRunBudget = Math.min(BATCH_SIZE, roomToFloor || BATCH_SIZE);
+  // Drip across the day: only send up to the share of the daily floor that
+  // should have gone out by this hour (job runs hourly).
+  const hourUtc = new Date().getUTCHours();
+  const pacedTarget = Math.ceil((dailyFloor * (hourUtc + 1)) / 24);
+
+  // Per-run budget: enough to catch up to the paced target (and the floor by day's end).
+  const roomToFloor = Math.max(0, Math.min(dailyFloor, pacedTarget) - alreadySent);
+  const perRunBudget = Math.min(BATCH_SIZE, roomToFloor);
+
 
   const nowIso = new Date().toISOString();
   const results: any[] = [];
