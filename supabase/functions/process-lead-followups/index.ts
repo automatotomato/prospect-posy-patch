@@ -8,9 +8,9 @@ import { ZC_PROFILE } from "../_shared/zc-profile.ts";
 import { verifySenderDomain } from "../_shared/sender-domain.ts";
 
 const MAX_TOUCHES = 5;
-const BATCH_SIZE = 60; // per invocation — enough headroom to top-up to daily floor
+const BATCH_SIZE = 45; // per hourly invocation — headroom above the ~21/hr pace
 const SEND_SPACING_MS = 800;
-const DAILY_FLOOR = 200; // hard minimum emails/day (follow-ups + first-touch top-up)
+const DAILY_FLOOR = 500; // hard minimum emails/day (follow-ups + first-touch top-up)
 
 // Cadence in days by (upcoming) touch number. touch #2 = 4d after #1, etc.
 const CADENCE_DAYS: Record<number, number> = { 2: 4, 3: 7, 4: 10, 5: 14 };
@@ -128,16 +128,16 @@ Deno.serve(async (req) => {
 
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
-  // Read caps from lead_costs. Floor is enforced at DAILY_FLOOR (200).
+  // Read caps from lead_costs. Floor is enforced at DAILY_FLOOR (500).
   let dailyFloor = DAILY_FLOOR;
-  let followupCap = 150;
+  let followupCap = 350;
   const { data: costsRow } = await supabase
     .from("lead_costs")
     .select("daily_send_cap, followup_daily_cap")
     .eq("id", "default")
     .maybeSingle();
   if (costsRow?.daily_send_cap) dailyFloor = Math.max(DAILY_FLOOR, Number(costsRow.daily_send_cap) || DAILY_FLOOR);
-  if (costsRow?.followup_daily_cap) followupCap = Number(costsRow.followup_daily_cap) || 150;
+  if (costsRow?.followup_daily_cap) followupCap = Number(costsRow.followup_daily_cap) || 350;
 
   // Count auto-sends in the last 24h, split by first-touch vs follow-up.
   const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
@@ -151,9 +151,15 @@ Deno.serve(async (req) => {
   const firstTouchSent24h = recentRows.length - followupsSent24h;
   const alreadySent = recentRows.length;
 
-  // Per-run budget: enough to push us to the daily floor.
-  const roomToFloor = Math.max(0, dailyFloor - alreadySent);
-  const perRunBudget = Math.min(BATCH_SIZE, roomToFloor || BATCH_SIZE);
+  // Drip across the day: only send up to the share of the daily floor that
+  // should have gone out by this hour (job runs hourly).
+  const hourUtc = new Date().getUTCHours();
+  const pacedTarget = Math.ceil((dailyFloor * (hourUtc + 1)) / 24);
+
+  // Per-run budget: enough to catch up to the paced target (and the floor by day's end).
+  const roomToFloor = Math.max(0, Math.min(dailyFloor, pacedTarget) - alreadySent);
+  const perRunBudget = Math.min(BATCH_SIZE, roomToFloor);
+
 
   const nowIso = new Date().toISOString();
   const results: any[] = [];
@@ -241,8 +247,8 @@ ${draft.body.split("\n").map((ln) => ln.trim() ? `<p style="margin:0 0 16px 0;">
     }
   }
 
-  // ---- PHASE 2: top up with first-touch sends until we hit the daily floor ----
-  const topUpRoom = Math.max(0, Math.min(perRunBudget - sentThisRun, dailyFloor - alreadySent - sentThisRun));
+  // ---- PHASE 2: top up with first-touch sends until we hit this hour's paced target ----
+  const topUpRoom = Math.max(0, perRunBudget - sentThisRun);
   if (topUpRoom > 0) {
     const { data: freshLeads, error: freshErr } = await supabase
       .from("sales_leads")
@@ -286,6 +292,7 @@ ${draft.body.split("\n").map((ln) => ln.trim() ? `<p style="margin:0 0 16px 0;">
       first_touch_24h: firstTouchSent24h,
       followups_24h: followupsSent24h,
       daily_floor: dailyFloor,
+      paced_target_this_hour: pacedTarget,
       followup_cap: followupCap,
       results,
     }),
