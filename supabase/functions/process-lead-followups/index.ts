@@ -8,9 +8,9 @@ import { ZC_PROFILE } from "../_shared/zc-profile.ts";
 import { verifySenderDomain } from "../_shared/sender-domain.ts";
 
 const MAX_TOUCHES = 5;
-const BATCH_SIZE = 60; // per invocation — enough headroom to top-up to daily floor
+const BATCH_SIZE = 45; // per hourly invocation — headroom above the ~21/hr pace
 const SEND_SPACING_MS = 800;
-const DAILY_FLOOR = 200; // hard minimum emails/day (follow-ups + first-touch top-up)
+const DAILY_FLOOR = 500; // hard minimum emails/day (follow-ups + first-touch top-up)
 
 // Cadence in days by (upcoming) touch number. touch #2 = 4d after #1, etc.
 const CADENCE_DAYS: Record<number, number> = { 2: 4, 3: 7, 4: 10, 5: 14 };
