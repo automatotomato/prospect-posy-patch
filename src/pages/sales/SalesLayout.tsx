@@ -150,7 +150,9 @@ export default function SalesLayout() {
     const inserted = data?.inserted ?? 0;
     const state = data?.state ?? "";
     setLastScout({ state, inserted });
+    if (data?.warning) toast.warning(data.warning, { duration: 12000 });
     toast.success(`Scouted ${inserted} new ${state} leads with verified emails`);
+
     if (data?.leads?.length) {
       for (const l of data.leads) logActivity(l.id, "discovered", `${l.industry} · ${l.city}, ${state}`);
     }
