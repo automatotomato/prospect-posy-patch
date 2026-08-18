@@ -126,12 +126,27 @@ export default function SalesLayout() {
   }, [isAdmin, pathname]);
 
 
+  const fnError = async (error: any) => {
+    try {
+      const ctx = (error as any)?.context;
+      if (ctx && typeof ctx.text === "function") {
+        const txt = await ctx.text();
+        try {
+          const j = JSON.parse(txt);
+          return j.details ? `${j.error}: ${j.details}` : (j.error || j.message || txt);
+        } catch { return txt || error.message; }
+      }
+    } catch { /* ignore */ }
+    return error?.message || "Request failed";
+  };
+
   const discover = async () => {
     setDiscovering(true);
     toast.info("Scout running — this can take 1–2 minutes…");
     const { data, error } = await supabase.functions.invoke("sales-scout-leads", { body: {} });
     setDiscovering(false);
-    if (error) return toast.error(error.message);
+    if (error) return toast.error(await fnError(error), { duration: 12000 });
+    if (data?.error) return toast.error(data.details ? `${data.error}: ${data.details}` : data.error, { duration: 12000 });
     const inserted = data?.inserted ?? 0;
     const state = data?.state ?? "";
     setLastScout({ state, inserted });
@@ -146,9 +161,10 @@ export default function SalesLayout() {
     setGeneratingId(lead.id);
     const { data, error } = await supabase.functions.invoke("sales-generate-email", { body: { lead_id: lead.id } });
     setGeneratingId(null);
-    if (error) return toast.error(error.message);
+    if (error) return toast.error(await fnError(error), { duration: 12000 });
     if (data?.lead) { await logActivity(lead.id, "email_generated"); load(); toast.success("Email drafted"); }
   };
+
 
   const copy = async (lead: Lead) => {
     const text = `Subject: ${lead.email_subject}\n\n${lead.email_body}`;
