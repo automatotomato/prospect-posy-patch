@@ -268,35 +268,43 @@ Deno.serve(async (req) => {
       return data;
     }
 
+    let placesError: string | null = null;
     outer:
     for (const city of cityPool) {
       for (const q of queryPool) {
         if (inserted.length >= TARGET || candidatesProcessed >= MAX_CANDIDATES || timeUp()) break outer;
 
-        const placesRes = await fetch("https://places.googleapis.com/v1/places:searchText", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Goog-Api-Key": googleKey,
-            "X-Goog-FieldMask": "places.displayName,places.formattedAddress,places.websiteUri,places.nationalPhoneNumber,places.types,places.id",
-          },
-          body: JSON.stringify({ textQuery: `${q} in ${city}`, pageSize: 10 }),
-        });
+        let placesRes: Response;
+        try {
+          placesRes = await fetch("https://places.googleapis.com/v1/places:searchText", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Goog-Api-Key": googleKey,
+              "X-Goog-FieldMask": "places.displayName,places.formattedAddress,places.websiteUri,places.nationalPhoneNumber,places.types,places.id",
+            },
+            body: JSON.stringify({ textQuery: `${q} in ${city}`, pageSize: 10 }),
+            signal: AbortSignal.timeout(10000),
+          });
+        } catch (e) {
+          placesError = `Places request failed: ${String(e).slice(0, 200)}`;
+          console.error(placesError);
+          continue;
+        }
         if (!placesRes.ok) {
           const errTxt = await placesRes.text();
-          console.error("Places API error", placesRes.status, errTxt.slice(0, 300));
-          return new Response(JSON.stringify({
-            error: `Google Places API error (${placesRes.status})`,
-            details: errTxt.slice(0, 500),
-            hint: "The GOOGLE_PLACES_API_KEY secret appears to be invalid or has restrictions. Update it in project settings.",
-          }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          placesError = `Google Places API error (${placesRes.status}): ${errTxt.slice(0, 300)}`;
+          console.error(placesError);
+          // Auth/quota problems won't fix themselves — stop early.
+          if ([401, 403, 429].includes(placesRes.status)) break outer;
+          continue;
         }
         const placesJson = await placesRes.json();
         const places = (placesJson.places || []) as any[];
         candidatesProcessed += places.length;
 
         // Process this batch of places in parallel
-        const results = await Promise.all(places.map((p) => processPlace(p, q, city).catch(() => null)));
+        const results = await Promise.all(places.map((p) => processPlace(p, q, city).catch((e) => { console.error("place fail", String(e)); return null; })));
         for (const r of results) {
           if (r) inserted.push(r);
           if (inserted.length >= TARGET) break;
@@ -309,8 +317,10 @@ Deno.serve(async (req) => {
       state,
       candidates_processed: candidatesProcessed,
       target: TARGET,
+      warning: placesError,
       leads: inserted,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
   } catch (e) {
     console.error(e);
     return new Response(JSON.stringify({ error: String(e) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
