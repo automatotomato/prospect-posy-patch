@@ -8,7 +8,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
   LogOut, Sparkles, Search, Clock, Users, Activity as ActivityIcon,
   LayoutDashboard, Kanban, Settings as SettingsIcon, Bell, Building2, HelpCircle, Menu,
-  Mail, ChevronDown, ShieldCheck, Trophy,
+  Mail, ChevronDown,
 } from "lucide-react";
 import { useSalesLeads, type Lead, STAGES } from "@/hooks/useSalesLeads";
 import { ScanCardDialog } from "@/components/sales/ScanCardDialog";
@@ -249,10 +249,6 @@ export default function SalesLayout() {
         <SideNav to="/sales/activity" icon={<ActivityIcon className="w-4 h-4" />} label="Activity" onClick={() => setMobileNavOpen(false)} />
         <SideNav to="/sales/followups" icon={<Clock className="w-4 h-4" />} label="Follow-ups" badge={dueFollowUps.length || undefined} onClick={() => setMobileNavOpen(false)} />
         <SideNav to="/sales/campaigns" icon={<Mail className="w-4 h-4" />} label="Campaigns" onClick={() => setMobileNavOpen(false)} />
-        {isAdmin && (
-          <SideNav to="/sales/approvals" icon={<ShieldCheck className="w-4 h-4" />} label="Approvals" badge={pendingApprovals || undefined} onClick={() => setMobileNavOpen(false)} />
-        )}
-        <SideNav to="/sales/wins" icon={<Trophy className="w-4 h-4" />} label="Wins" onClick={() => setMobileNavOpen(false)} />
         <SideNav to="/sales/how-it-works" icon={<HelpCircle className="w-4 h-4" />} label="How It Works" onClick={() => setMobileNavOpen(false)} />
       </nav>
 
