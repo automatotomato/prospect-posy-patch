@@ -1,16 +1,14 @@
-# Fix Google Places 403 PERMISSION_DENIED
+# Remove Approvals and Wins from Sidebar Menu
 
-## Diagnosis
-The scout function fails with `API_KEY... blocked` from `places.googleapis.com` SearchText. The new API key is restricted in Google Cloud Console in a way that blocks Places API (New) server-side calls. No code change is needed — the fix is in the Google Cloud key configuration.
+## Goal
+Hide the **Approvals** and **Wins** navigation items from the sales sidebar menu while leaving the underlying routes and pages intact (they remain reachable by direct URL if needed).
 
-## User steps (Google Cloud Console)
-1. APIs & Services → Library → enable **Places API (New)** (legacy "Places API" alone is not sufficient).
-2. Credentials → API key → set **API restrictions** to "Don't restrict key" or include Places API (New).
-3. Set **Application restrictions** to **None** (backend calls have no HTTP referrer).
-4. Confirm a billing account is linked to the project.
-5. Wait ~2 minutes for propagation.
+## Changes
+1. **Update `src/pages/sales/SalesLayout.tsx`**
+   - Remove the conditional `Approvals` sidebar link (lines 252-254).
+   - Remove the `Wins` sidebar link (line 255).
+   - Clean up unused imports if `ShieldCheck` and `Trophy` are no longer used elsewhere in the file.
 
-## Agent verification (after user confirms)
-1. Call the `sales-scout-leads` edge function and confirm it returns `inserted > 0` or at least no Places `warning`.
-2. If a 403 persists, surface the exact Google error body from the function response and iterate on the key settings.
-3. Confirm newly scouted leads appear in the Leads view with emails and drafted outreach.
+## Notes
+- The `/sales/approvals` and `/sales/wins` routes in `App.tsx` stay as-is so existing bookmarks/direct links still work.
+- The `pendingApprovals` polling logic and context value can remain since it does not affect the UI once the link is removed; it can be removed later if desired.
