@@ -29,6 +29,9 @@ import Wins from "./pages/sales/Wins";
 
 const queryClient = new QueryClient();
 
+// Set to false to unlock all dashboards.
+const DASHBOARDS_LOCKED = true;
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -36,6 +39,14 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          {DASHBOARDS_LOCKED ? (
+            <div className="min-h-screen flex items-center justify-center bg-background p-6">
+              <div className="max-w-md text-center space-y-3">
+                <h1 className="text-2xl font-semibold text-foreground">Dashboard locked</h1>
+                <p className="text-muted-foreground">Access to this workspace is temporarily disabled. Please contact your administrator.</p>
+              </div>
+            </div>
+          ) : (
           <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route path="/sales/login" element={<SalesLogin />} />
